@@ -71,22 +71,73 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
 #' @param scores Dataframe of scores returned from \code{call_significant_response}.
 #' @param control_name Name of control passed to \code{call_significant_response}.
 #' @param condition_name Name of condition passed to \code{call_significant_response}.
+#' @param loess If true and data was loess-normalized, plots loess null model instead.
 #' @return A ggplot object.
 #' @export
-plot_significant_response <- function(scores, control_name, condition_name) {
+plot_significant_response <- function(scores, control_name, condition_name,
+                                      loess = TRUE) {
+  
+  # Manually sets colors for plot
+  colors <- c("Black", "Gray", "Black")
+  fill <- c("Blue", "Gray", "Yellow")
+  condition_response_col <- paste0("effect_type_", condition_name)
+  neg_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] < 0 & 
+    scores[[condition_response_col]] != "None"
+  pos_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] > 0 & 
+    scores[[condition_response_col]] != "None"
+  if (any(neg_ind) & !any(pos_ind)) {
+    colors <- c("Blue", "Gray")
+    fill <- c("Black", "Gray")
+  } else if (!any(neg_ind) & any(pos_ind)) {
+    colors <- c("Gray", "Yellow")
+    fill <- c("Gray", "Black")
+  } else if (!any(neg_ind) & !(any(pos_ind))) {
+    colors <- c("Gray")
+    fill <- c("Gray")
+  }
+  # 
+  # # Manually sets colors for plot
+  # neutral_name <- "None"
+  # neg_name <- ""
+  # pos_name <- ""
+  # condition_response_col <- paste0("effect_type_", condition_name)
+  # neg_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] < 0 & 
+  #   scores[[condition_response_col]] != "None"
+  # pos_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] > 0 & 
+  #   scores[[condition_response_col]] != "None"
+  # if (any(neg_ind) & any(pos_ind)) {
+  #   neg_name <- scores[[condition_response_col]][which(neg_ind == TRUE)[1]]
+  #   pos_name <- scores[[condition_response_col]][which(pos_ind == TRUE)[1]]
+  # } else if (any(neg_ind) & !any(pos_ind)) {
+  #   neg_name <- scores[[condition_response_col]][which(neg_ind == TRUE)[1]]
+  # } else if (!any(neg_ind) & any(pos_ind)) {
+  #   pos_name <- scores[[condition_response_col]][which(pos_ind == TRUE)[1]]
+  # }
+  # colors <- c(neg_name = "Blue", "Gray", "Yellow")
+  # fill <- c(neg_name = "Blue", "Gray", "Yellow")
+  # 
+  # Builds basic plot
   response_col <- paste0("effect_type_", condition_name)
-  scores$response_factor <- ifelse(scores[[response_col]] != "None", 1, 0)
-  scores <- scores[order(scores$response_factor, decreasing = FALSE),]
+  scores <- scores[order(scores[[paste0("differential_", condition_name, "_vs_", control_name)]]),]
   p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_", control_name), 
                                           y = paste0("mean_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
-    ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
-    ggplot2::geom_abline(slope = 1, intercept = 0, size = 1.5, alpha = 0.5, color = "Black") +
+    ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray")
+  
+  # Appends choice of null model to plot
+  if (loess) {
+  } else {
+    p <- p + 
+      ggplot2::geom_abline(slope = 1, intercept = 0, size = 1.5, alpha = 0.5, color = "Black")
+  }
+  
+  # Finishes plot
+  p <- p + 
     ggplot2::geom_point(aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
-    ggplot2::scale_color_manual(values = c("Gray", "Black", "Black")) +
-    ggplot2::scale_fill_manual(values = c("Gray", "Blue", "Yellow")) +
-    ggplot2::xlab(paste(control_name, " mean log FC")) +
-    ggplot2::ylab(paste(condition_name, " mean log FC")) +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::scale_fill_manual(values = fill) +
+    ggplot2::xlab(paste0(control_name, " mean log FC")) +
+    ggplot2::ylab(paste0(condition_name, " mean log FC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20) +
@@ -122,19 +173,36 @@ plot_significant_response_dual <- function(scores, condition_name, filter_name =
       "None"
   }
   
+  # Manually sets colors for plot
+  colors <- c("Black", "Gray", "Black")
+  fill <- c("Blue", "Gray", "Yellow")
+  neg_ind <- scores[[paste0("differential_dual_vs_single_", condition_name)]] < 0 & 
+    scores[[condition_response_col]] != "None"
+  pos_ind <- scores[[paste0("differential_dual_vs_single_", condition_name)]] > 0 & 
+    scores[[condition_response_col]] != "None"
+  if (any(neg_ind) & !any(pos_ind)) {
+    colors <- c("Blue", "Gray")
+    fill <- c("Black", "Gray")
+  } else if (!any(neg_ind) & any(pos_ind)) {
+    colors <- c("Gray", "Yellow")
+    fill <- c("Gray", "Black")
+  } else if (!any(neg_ind) & !(any(pos_ind))) {
+    colors <- c("Gray")
+    fill <- c("Gray")
+  }
+  
   # Plots data
-  scores$response_factor <- ifelse(scores[[condition_response_col]] != "None", 1, 0)
-  scores <- scores[order(scores$response_factor, decreasing = FALSE),]
+  scores <- scores[order(scores[[paste0("differential_dual_vs_single_", condition_name)]]),]
   p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_single_", condition_name), 
                                           y = paste0("mean_dual_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
     ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
     ggplot2::geom_abline(slope = 1, intercept = 0, size = 1.5, alpha = 0.5, color = "Black") +
     ggplot2::geom_point(aes_string(color = condition_response_col, fill = condition_response_col), shape = 21, alpha = 0.7) +
-    ggplot2::scale_color_manual(values = c("Gray", "Black", "Black")) +
-    ggplot2::scale_fill_manual(values = c("Gray", "Blue", "Yellow")) +
-    ggplot2::xlab(paste(condition_name, " mean expected single-targeted log FC")) +
-    ggplot2::ylab(paste(condition_name, " mean dual-targeted log FC")) +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::scale_fill_manual(values = fill) +
+    ggplot2::xlab(paste0(condition_name, " mean expected single-targeted log FC")) +
+    ggplot2::ylab(paste0(condition_name, " mean dual-targeted log FC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20) +

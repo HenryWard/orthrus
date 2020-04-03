@@ -176,7 +176,7 @@ retrieve_guides_by_label <- function(df, gene_pairs, gene_col1, gene_col2,
   return(guides)
 }
 
-#' Splits guides by type
+#' Splits guides by type.
 #' 
 #' Splits guide returned from \code{retrieve_guides_by_gene} by targeting type, which is 
 #' one of dual-gene exonic-exonic, single-gene exonic-exonic or exonic-intergenic.
@@ -194,6 +194,20 @@ split_guides_by_type <- function(guides) {
   return(list("single_gene_dual_targeted" = dual_targeted, 
               "exonic_intergenic" = single_targeted, 
               "exonic_exonic" = pairwise_targeted))
+}
+
+#' Log-normalizes reads.
+#' 
+#' Log2-normalizes reads with a given pseudocount and scaling factor, and also
+#' depth-normalizes the data. 
+#' 
+#' @param data List of read counts
+#' @param cf1 Scaling factor (default 1e6)
+#' @param cf2 Pseudocount (default 1)
+#' @return Log- and depth-normalized read counts
+#' @export
+normalize_reads <- function(data, cf1 = 1e6, cf2 = 1) {
+  log2((data / sum(data, na.rm = TRUE)) * cf1 + cf2)
 }
 
 # Inner function to get sorted merge of two columns for a single row. 

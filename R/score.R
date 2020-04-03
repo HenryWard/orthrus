@@ -22,11 +22,12 @@
 #'   in as separate lists formatted the same as control_cols. 
 #' @param min_guides The minimum number of guides per gene pair required to score data 
 #'   (default 3).
+#' @param loess If true, loess-normalizes residuals before running hypothesis testing.
 #' @return A dataframe of scored data with separate columns given by the specified control
 #'   and condition names.
 #' @export
 score_conditions_vs_control <- function(guides, control_cols, ..., 
-                                        min_guides = 3) {
+                                        min_guides = 3, test = "moderated-t", loess = TRUE) {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_cols[1]
@@ -39,14 +40,37 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
     condition_cols[[name]] <- condition[2:length(condition)]
   }
   
-  # Makes output dataframes
+  # Makes output dataframe
   scores <- data.frame(gene1 = rep(NA, length(guides)), gene2 = NA)
+  
+  # Makes residual dataframes if necessary
+  max_guides <- -1
   condition_residuals <- list()
-  for (name in condition_names) {
-    condition_residuals[[name]] <- data.frame(residual1 = rep(NA, length(guides)), 
-                                              residual2 = NA, residual3 = NA,
-                                              residual4 = NA, residual5 = NA, 
-                                              residual6 = NA)
+  if (test == "moderated-t") {
+    
+    # Gets max number of guides first
+    for (guide in guides) {
+      guide_names <- names(guide)[!(names(guide) %in% c("gene1", "gene2", "guide_type"))]
+      guide_num <- max(unlist(lapply(guide_names, function(x) length(guide[[x]]))))
+      max_guides <- max(max_guides, guide_num)
+    }
+    
+    # Makes residual dataframes with columns equal to the max number of guides
+    for (name in condition_names) {
+      residual_df <- data.frame(matrix(nrow = length(guides), ncol = max_guides))
+      colnames(residual_df) <- paste0("guide_residual_", 1:max_guides)
+      condition_residuals[[name]] <- residual_df
+    }
+  }
+  
+  # Makes loess residual dataframe if specified
+  loess_residuals <- NULL
+  if (loess) {
+    loess_residuals <- data.frame(n = rep(0, max_guides*length(guides)))
+    loess_residuals[[paste0("mean_", control_name)]] <- rep(0, nrow(loess_residuals))
+    for (name in condition_names) {
+      loess_residuals[[paste0("mean_", name)]] <- rep(0, nrow(loess_residuals))
+    }
   }
   
   # Appends additional columns for each condition
@@ -65,6 +89,7 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
   scores[new_cols] <- NA
   
   # Scores guides for each condition
+  counter <- 1
   for (i in 1:length(guides)) {
     
     # Gets gene names and control guide values across replicates
@@ -72,6 +97,13 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
     scores$gene1[i] <- guide_vals$gene1
     scores$gene2[i] <- guide_vals$gene2
     rep_mean_control <- rowMeans(data.frame(guide_vals[control_cols]))
+    
+    # Makes loess-normalized residual dataframe if necessary
+    ind <- counter:(counter + length(rep_mean_control) - 1)
+    if (loess) {
+      loess_residuals$n[ind] <- i
+      loess_residuals[[paste0("mean_", control_name)]][ind] <- rep_mean_control
+    }
     
     # Takes the mean across replicates for all conditions
     for (name in condition_names) {
@@ -83,17 +115,62 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
       scores[[paste0("mean_", name)]][i] <- mean(rep_mean_condition)
       scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(diff)
       
-      # Stores residuals for moderated t-test
-      if (length(diff) < 6) { diff <- c(diff, rep(NA, 6 - length(diff))) } 
-      condition_residuals[[name]][i,1:6] <- diff 
+      # Appends mean LFCs for loess-normalization if specified
+      if (loess) {
+        loess_residuals[[paste0("mean_", name)]][ind] <- rep_mean_condition
+      }
+      
+      # Performs the specified type of testing or stores residuals for later testing
+      if (test == "rank-sum") {
+        scores[[paste0("pval_", name, "_vs_", control_name)]][i] <- 
+          suppressWarnings(wilcox.test(rep_mean_condition, rep_mean_control))$p.value
+      } else if (test == "moderated-t") {
+        if (length(diff) < max_guides) { diff <- c(diff, rep(NA, max_guides - length(diff))) } 
+        condition_residuals[[name]][i,1:max_guides] <- diff 
+      }
     }
+    counter <- counter + length(rep_mean_control)
+  }
+   
+  # Computes loess-normalized residuals if specified
+  if (loess & test == "moderated-t") {
+    loess_residuals <- loess_residuals[1:counter,]
+    control_values <- loess_residuals[[paste0("mean_", control_name)]]
+    for (name in condition_names) {
+      condition_values <- loess_residuals[[paste0("mean_", name)]]
+      temp <- loess_MA(control_values, condition_values)
+      loess_residuals[[paste0("loess_residual_", name)]] <- temp[["residual"]]
+      loess_residuals[[paste0("loess_predicted_", name)]] <- temp[["predicted"]]
+    }
+    
+    # Replaces residuals with loess-normalized residuals
+    for (i in 1:length(guides)) {
+      for (name in condition_names) {
+        resid <- loess_residuals[[paste0("loess_residual_", name)]][loess_residuals$n == i]
+        predicted <- loess_residuals[[paste0("loess_predicted_", name)]][loess_residuals$n == i]
+        if (length(resid) < max_guides) { 
+          resid <- c(resid, rep(NA, max_guides - length(resid))) 
+        } 
+        condition_residuals[[name]][i,1:max_guides] <- resid
+        scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(resid)
+        scores[[paste0("loess_predicted_", name)]][i] <- mean(predicted)
+      }
+    }
+  } else if (loess) {
+    cat("Warning: loess-normalization is only enabled for the test=\"moderated-t\" option\n")
   }
   
   # Scores condition response with moderated t-test
+  if (test == "moderated-t") {
+    for (name in condition_names) {
+      ebayes_fit <- limma::eBayes(limma::lmFit(condition_residuals[[name]]))
+      p_val <- ebayes_fit$p.value[,1]
+      scores[[paste0("pval_", name, "_vs_", control_name)]] <- p_val
+    }   
+  }
+  
+  # Computes FDRs
   for (name in condition_names) {
-    ebayes_fit <- limma::eBayes(limma::lmFit(condition_residuals[[name]]))
-    p_val <- ebayes_fit$p.value[,1]
-    scores[[paste0("pval_", name, "_vs_", control_name)]] <- p_val
     scores[[paste0("fdr_", name, "_vs_", control_name)]] <- 
       p.adjust(scores[[paste0("pval_", name, "_vs_", control_name)]], method = "BH")
   }
@@ -205,7 +282,7 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
     single_gene1 <- single_guides[unlist(lapply(single_guides, function(x) x[["gene1"]] == gene1))][[1]]
     single_gene2 <- single_guides[unlist(lapply(single_guides, function(x) x[["gene1"]] == gene2))][[1]]
     
-    # scoress dual-targeting guides vs. single-targeting null model
+    # Scores dual-targeting guides vs. single-targeting null model
     for (name in condition_names) {
       
       # Gets column names for each orientation and the current condition
@@ -227,7 +304,7 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
       dual2 <- rowMeans(data.frame(dual_vals[orient2]))
       
       # Gets residuals
-      scores[[paste0("orientation_agree_", name)]] <- 
+      scores[[paste0("orientation_agree_", name)]][i] <- 
         (sign(mean(dual1) - mean(null1)) == sign(mean(dual2) - mean(null2)))
       scores[[paste0("differential_dual_vs_single_", name)]][i] <- mean(c(dual1, dual2)) - mean(c(null1, null2))
       
@@ -337,7 +414,6 @@ call_significant_response <- function(scores, control_cols, ...,
       scores[[paste0("fdr_", name, "_vs_", control_name)]] < fdr_threshold
   }
   
-  
   # Makes thresholded calls for significant negative and positive effects
   for (name in condition_names) {
     response_col <- paste0("effect_type_", name)
@@ -414,7 +490,7 @@ call_significant_response_dual <- function(scores, ...,
 }
 
 # Fits a loess curve to predict y given x
-gi_MA_loess_Func <- function(x, y, sp = 0.4, dg = 2, binSize = 100) {
+loess_MA <- function(x, y, sp = 0.4, dg = 2, binSize = 100) {
   #this concept is based on pythagoras and cancels out sqrt, square and factor 2
   #it also ignores the factor sqrt(2) as factor between y and x vs distance of x,y from diagonal x = y
   if(all(x == y, na.rm = T)) { #if e.g. wt scored against itself
@@ -435,9 +511,12 @@ gi_MA_loess_Func <- function(x, y, sp = 0.4, dg = 2, binSize = 100) {
       b <- c(b, temp_b)
     }
     I <- is.finite(m[b]) & is.finite(a[b]) #only use finite values
-    model <- loess(m[b][I] ~ a[b][I], span=sp, degree = dg) #train model on m ~ a (approx. y ~ x)
+    model <- loess(m[b][I] ~ a[b][I], span = sp, degree = dg) #train model on m ~ a (approx. y ~ x)
     expected <- predict(model, a) #predict expected m ~ a
     gi <- m - expected
   }
-  return(gi)
+  result <- list()
+  result[["residual"]] <- gi
+  result[["predicted"]] <- expected
+  return(result)
 }
