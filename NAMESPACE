@@ -2,6 +2,7 @@
 
 export(call_significant_response)
 export(call_significant_response_dual)
+export(normalize_reads)
 export(plot_reads)
 export(plot_samples)
 export(plot_significant_response)

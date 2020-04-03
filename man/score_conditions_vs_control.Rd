@@ -4,7 +4,14 @@
 \alias{score_conditions_vs_control}
 \title{Scores conditions against a single control.}
 \usage{
-score_conditions_vs_control(guides, control_cols, ..., min_guides = 3)
+score_conditions_vs_control(
+  guides,
+  control_cols,
+  ...,
+  min_guides = 3,
+  test = "moderated-t",
+  loess = TRUE
+)
 }
 \arguments{
 \item{guides}{A list of guides returned from \code{retrieve_guides_by_label} or 
@@ -21,6 +28,8 @@ in as separate lists formatted the same as control_cols.}
 
 \item{min_guides}{The minimum number of guides per gene pair required to score data 
 (default 3).}
+
+\item{loess}{If true, loess-normalizes residuals before running hypothesis testing.}
 }
 \value{
 A dataframe of scored data with separate columns given by the specified control

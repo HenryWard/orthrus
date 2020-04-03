@@ -4,7 +4,7 @@
 \alias{plot_significant_response}
 \title{Plots drug response for scored data.}
 \usage{
-plot_significant_response(scores, control_name, condition_name)
+plot_significant_response(scores, control_name, condition_name, loess = TRUE)
 }
 \arguments{
 \item{scores}{Dataframe of scores returned from \code{call_significant_response}.}
@@ -12,6 +12,8 @@ plot_significant_response(scores, control_name, condition_name)
 \item{control_name}{Name of control passed to \code{call_significant_response}.}
 
 \item{condition_name}{Name of condition passed to \code{call_significant_response}.}
+
+\item{loess}{If true and data was loess-normalized, plots loess null model instead.}
 }
 \value{
 A ggplot object.
