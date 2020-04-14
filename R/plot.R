@@ -71,7 +71,8 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
 #' @param scores Dataframe of scores returned from \code{call_significant_response}.
 #' @param control_name Name of control passed to \code{call_significant_response}.
 #' @param condition_name Name of condition passed to \code{call_significant_response}.
-#' @param loess If true and data was loess-normalized, plots loess null model instead.
+#' @param loess If true and data was loess-normalized, plots loess null model instead
+#'   (default TRUE).
 #' @return A ggplot object.
 #' @export
 plot_significant_response <- function(scores, control_name, condition_name,
@@ -95,27 +96,7 @@ plot_significant_response <- function(scores, control_name, condition_name,
     colors <- c("Gray")
     fill <- c("Gray")
   }
-  # 
-  # # Manually sets colors for plot
-  # neutral_name <- "None"
-  # neg_name <- ""
-  # pos_name <- ""
-  # condition_response_col <- paste0("effect_type_", condition_name)
-  # neg_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] < 0 & 
-  #   scores[[condition_response_col]] != "None"
-  # pos_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] > 0 & 
-  #   scores[[condition_response_col]] != "None"
-  # if (any(neg_ind) & any(pos_ind)) {
-  #   neg_name <- scores[[condition_response_col]][which(neg_ind == TRUE)[1]]
-  #   pos_name <- scores[[condition_response_col]][which(pos_ind == TRUE)[1]]
-  # } else if (any(neg_ind) & !any(pos_ind)) {
-  #   neg_name <- scores[[condition_response_col]][which(neg_ind == TRUE)[1]]
-  # } else if (!any(neg_ind) & any(pos_ind)) {
-  #   pos_name <- scores[[condition_response_col]][which(pos_ind == TRUE)[1]]
-  # }
-  # colors <- c(neg_name = "Blue", "Gray", "Yellow")
-  # fill <- c(neg_name = "Blue", "Gray", "Yellow")
-  # 
+
   # Builds basic plot
   response_col <- paste0("effect_type_", condition_name)
   scores <- scores[order(scores[[paste0("differential_", condition_name, "_vs_", control_name)]]),]
@@ -157,10 +138,13 @@ plot_significant_response <- function(scores, control_name, condition_name,
 #' @param scores Dataframe of scores returned from \code{call_significant_response_dual}.
 #' @param condition_name Name of condition passed to \code{call_significant_response_dual}.
 #' @param filter_name If specified, calls points as non-significant if they are significant
-#'   in this column (e.g. to remove points significant in DMSO screens). Default NULL.
+#'   in this column (e.g. to remove points significant in DMSO screens; default NULL).
+#' @param loess If true and data was loess-normalized, plots loess null model instead
+#'   (default TRUE).
 #' @return A ggplot object.
 #' @export
-plot_significant_response_dual <- function(scores, condition_name, filter_name = NULL) {
+plot_significant_response_dual <- function(scores, condition_name, filter_name = NULL,
+                                           loess = TRUE) {
   
   # If filter_name given, remove significant guides with the same effect as a control 
   # type of guides (e.g. DMSO) from plot
@@ -196,8 +180,17 @@ plot_significant_response_dual <- function(scores, condition_name, filter_name =
   p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_single_", condition_name), 
                                           y = paste0("mean_dual_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
-    ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
-    ggplot2::geom_abline(slope = 1, intercept = 0, size = 1.5, alpha = 0.5, color = "Black") +
+    ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray")
+  
+  # Appends choice of null model to plot
+  if (loess) {
+  } else {
+    p <- p + 
+      ggplot2::geom_abline(slope = 1, intercept = 0, size = 1.5, alpha = 0.5, color = "Black")
+  }
+  
+  # Finishes plot
+  p <- p +
     ggplot2::geom_point(aes_string(color = condition_response_col, fill = condition_response_col), shape = 21, alpha = 0.7) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +

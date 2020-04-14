@@ -46,13 +46,18 @@ unique_gene_pairs <- function(df, gene_col1, gene_col2) {
 #' @param gene_col1 A column containing the first of two gene names. Intergenic regions must be 
 #'   denoted as "---" and non-targeted genes must be denoted as "None". 
 #' @param gene_col2 See above. 
+#' @param id_col1 A column containing guide-specific indices, e.g. guide sequences or IDs, for
+#'   guides in gene_col1 (optional, default NULL).  
+#' @param id_col2 A column containing guide-specific indices, e.g. guide sequences or IDs, for
+#'   guides in gene_col2 (optional, default NULL).  
 #' @param guide_cols A list of all columns containing log-normalized fold-changes.
 #' @return A list indexed by unique gene pairs that contains the gene names in the keys 
 #'   "gene1" and "gene2". Each column specified in guide_cols has its guide values 
 #'   stored in two keys, one for each orientation. For instance, the column "DMSO_T15"
 #'   will have its values stored in the keys "orient1_DMSO_T15" and "orient2_DMSO_T15".
 #' @export
-retrieve_guides_by_gene <- function(df, gene_pairs, gene_col1, gene_col2, guide_cols) {
+retrieve_guides_by_gene <- function(df, gene_pairs, gene_col1, gene_col2, guide_cols,
+                                    id_col1 = NULL, id_col2 = NULL) {
   
   # Constructs output list of guide-level values for the given columns
   guides <- list()
@@ -73,7 +78,17 @@ retrieve_guides_by_gene <- function(df, gene_pairs, gene_col1, gene_col2, guide_
         guide_list[[guide_name1]] <- df[index1, col]
         guide_list[[guide_name2]] <- df[index2, col]
       }
+      if (!is.null(id_col1)) {
+        guide_list[["orient1_id1"]] <- df[index1, id_col1]
+        guide_list[["orient1_id2"]] <- df[index1, id_col2]
+      }
+      if (!is.null(id_col2)) {
+        guide_list[["orient2_id1"]] <- df[index2, id_col1]
+        guide_list[["orient2_id2"]] <- df[index2, id_col2]
+      }
       guide_list[which(guide_list == numeric())] <- NA
+    } else {
+      warning(paste("No unique guides found for ", gene1, "and", gene2))
     }
     guides[[i]] <- guide_list
   }
@@ -101,6 +116,10 @@ retrieve_guides_by_gene <- function(df, gene_pairs, gene_col1, gene_col2, guide_
 #'   intergenic region, which must be labeled as "exonic" or "intergenic". 
 #' @param label_col2 See above, but for gene_col2. 
 #' @param guide_cols A list of all columns containing log-normalized fold-changes.
+#' @param id_col1 A column containing guide-specific indices, e.g. guide sequences or IDs, for
+#'   guides in gene_col1 (optional, default NULL).  
+#' @param id_col2 A column containing guide-specific indices, e.g. guide sequences or IDs, for
+#'   guides in gene_col2 (optional, default NULL). 
 #' @return A list indexed by unique gene pairs that contains the gene names in the keys 
 #'   "gene1" and "gene2". Each column specified in guide_cols has its guide values 
 #'   stored in two keys, one for each orientation. For instance, the column "DMSO_T15"
@@ -108,7 +127,8 @@ retrieve_guides_by_gene <- function(df, gene_pairs, gene_col1, gene_col2, guide_
 #'   The guide type is additionally contained in the key "guide_type". 
 #' @export
 retrieve_guides_by_label <- function(df, gene_pairs, gene_col1, gene_col2, 
-                                     label_col1, label_col2, guide_cols) {
+                                     label_col1, label_col2, guide_cols,
+                                     id_col1 = NULL, id_col2 = NULL) {
   
   # Constructs output list of guide-level values for the given columns
   guides <- list()
@@ -132,6 +152,12 @@ retrieve_guides_by_label <- function(df, gene_pairs, gene_col1, gene_col2,
         guide_name <- col
         guide_list[[guide_name]] <- df[all_index, col]
       }
+      if (!is.null(id_col1)) {
+        guide_list[["id1"]] <- df[all_index, id_col1]
+      }
+      if (!is.null(id_col2)) {
+        guide_list[["id2"]] <- df[all_index, id_col2]
+      }
     }
     
     # Handles guides targeting a single gene twice
@@ -140,6 +166,12 @@ retrieve_guides_by_label <- function(df, gene_pairs, gene_col1, gene_col2,
       for (col in guide_cols) {
         guide_name <- col
         guide_list[[guide_name]] <- df[all_index, col]
+      }
+      if (!is.null(id_col1)) {
+        guide_list[["id1"]] <- df[all_index, id_col1]
+      }
+      if (!is.null(id_col2)) {
+        guide_list[["id2"]] <- df[all_index, id_col2]
       }
     }
     
@@ -154,6 +186,14 @@ retrieve_guides_by_label <- function(df, gene_pairs, gene_col1, gene_col2,
         guide_list[[guide_name1]] <- df[orient1_index, col]
         guide_list[[guide_name2]] <- df[orient2_index, col]
       }
+      if (!is.null(id_col1)) {
+        guide_list[["orient1_id1"]] <- df[orient1_index, id_col1]
+        guide_list[["orient1_id2"]] <- df[orient1_index, id_col2]
+      }
+      if (!is.null(id_col2)) {
+        guide_list[["orient2_id1"]] <- df[orient2_index, id_col1]
+        guide_list[["orient2_id2"]] <- df[orient2_index, id_col2]
+      }
     }
     
     # Handles exonic-exonic guides targeting two genes
@@ -166,6 +206,14 @@ retrieve_guides_by_label <- function(df, gene_pairs, gene_col1, gene_col2,
         guide_name2 <- paste0("orient2_", col)
         guide_list[[guide_name1]] <- df[index1, col]
         guide_list[[guide_name2]] <- df[index2, col]
+      }
+      if (!is.null(id_col1)) {
+        guide_list[["orient1_id1"]] <- df[index1, id_col1]
+        guide_list[["orient1_id2"]] <- df[index1, id_col2]
+      }
+      if (!is.null(id_col2)) {
+        guide_list[["orient2_id1"]] <- df[index2, id_col1]
+        guide_list[["orient2_id2"]] <- df[index2, id_col2]
       }
     }
     
