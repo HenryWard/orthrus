@@ -13,6 +13,7 @@
 #' @return A ggplot object.
 #' @export
 plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
+  x_label <- paste(col, "log-normalized read counts")
   y_label <- "Number of read counts"
   if (log_scale) {
     df[,col] <- log2(df[,col] + 1)
@@ -20,6 +21,7 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
   }
   p <- ggplot2::ggplot(df, aes_string(col)) +
     ggplot2::geom_histogram(bins = 30) +
+    ggplot2::xlab(x_label) +
     ggplot2::ylab(y_label) +
     ggthemes::theme_tufte(base_size = 20)
   return(p)
@@ -132,37 +134,40 @@ plot_significant_response <- function(scores, control_name, condition_name,
 #' 
 #' Pretty-plots response for data which uses a derived null model (e.g. for comparing
 #' dual-gene knockout effects to a multiplicative null model derived from single-gene
-#' effects). Assumes that data was scored by \code{score_dual_vs_single} and 
-#' significant effects were called by \code{call_significant_response_dual}.
+#' effects). Assumes that data was scored by \code{score_combn_vs_single} and 
+#' significant effects were called by \code{call_significant_response_combn}.
 #' 
 #' @param scores Dataframe of scores returned from \code{call_significant_response_dual}.
 #' @param condition_name Name of condition passed to \code{call_significant_response_dual}.
-#' @param filter_name If specified, calls points as non-significant if they are significant
-#'   in this column (e.g. to remove points significant in DMSO screens; default NULL).
+#' @param filter_names If a list of column names is given, calls points as non-significant 
+#'   if they are significant in the provided columsn (e.g. to remove points significant 
+#'   in control screens; default NULL).
 #' @param loess If true and data was loess-normalized, plots loess null model instead
 #'   (default TRUE).
 #' @return A ggplot object.
 #' @export
-plot_significant_response_dual <- function(scores, condition_name, filter_name = NULL,
-                                           loess = TRUE) {
+plot_significant_response_combn <- function(scores, condition_name, filter_names = NULL, 
+                                            loess = TRUE) {
   
-  # If filter_name given, remove significant guides with the same effect as a control 
+  # If filter_names given, remove significant guides with the same effect as a control 
   # type of guides (e.g. DMSO) from plot
   condition_response_col <- paste0("effect_type_", condition_name)
-  if (!is.null(filter_name)) {
-    control_response_col <- paste0("effect_type_", filter_name)
-    scores[[condition_response_col]][
-      scores[[condition_response_col]] != "None" & 
-        scores[[control_response_col]] == scores[[condition_response_col]]] <-
-      "None"
+  if (!is.null(filter_names)) {
+    for (name in filter_names) {
+      control_response_col <- paste0("effect_type_", name)
+      scores[[condition_response_col]][
+        scores[[condition_response_col]] != "None" & 
+          scores[[control_response_col]] == scores[[condition_response_col]]] <-
+        "None"
+    }
   }
   
   # Manually sets colors for plot
   colors <- c("Black", "Gray", "Black")
   fill <- c("Blue", "Gray", "Yellow")
-  neg_ind <- scores[[paste0("differential_dual_vs_single_", condition_name)]] < 0 & 
+  neg_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] < 0 & 
     scores[[condition_response_col]] != "None"
-  pos_ind <- scores[[paste0("differential_dual_vs_single_", condition_name)]] > 0 & 
+  pos_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] > 0 & 
     scores[[condition_response_col]] != "None"
   if (any(neg_ind) & !any(pos_ind)) {
     colors <- c("Blue", "Gray")
@@ -176,9 +181,9 @@ plot_significant_response_dual <- function(scores, condition_name, filter_name =
   }
   
   # Plots data
-  scores <- scores[order(scores[[paste0("differential_dual_vs_single_", condition_name)]]),]
+  scores <- scores[order(scores[[paste0("differential_combn_vs_single_", condition_name)]]),]
   p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_single_", condition_name), 
-                                          y = paste0("mean_dual_", condition_name))) +
+                                          y = paste0("mean_combn_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
     ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray")
   

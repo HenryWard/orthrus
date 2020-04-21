@@ -29,7 +29,11 @@ in as separate lists formatted the same as control_cols.}
 \item{min_guides}{The minimum number of guides per gene pair required to score data 
 (default 3).}
 
-\item{loess}{If true, loess-normalizes residuals before running hypothesis testing.}
+\item{test}{Type of hypothesis testing to run. Must be one of "rank-sum" for Wilcoxon
+rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t").}
+
+\item{loess}{If true, loess-normalizes residuals before running hypothesis testing.
+Only works when test = "moderated-t" (default TRUE).}
 }
 \value{
 A dataframe of scored data with separate columns given by the specified control
@@ -39,7 +43,7 @@ A dataframe of scored data with separate columns given by the specified control
 Scores guides for any number of condition screens against a control screen
 (e.g. for directly comparing drug response to DMSO response). Do NOT use 
 this function if you would like to compare guides against a null model 
-derived from single-gene effects. In that case, call \code{score_dual_vs_single}
+derived from single-gene effects. In that case, call \code{score_combn_vs_single}
 instead. After running this function, pass the resulting dataframe to 
 \code{call_significant_response} to call significant effects.
 }

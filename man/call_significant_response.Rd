@@ -43,5 +43,5 @@ Dataframe of scored data with differential effects called as significant
 \description{
 Run this to call significant responses for data returned from 
 \code{score_conditions_vs_control}. Do NOT run this on data returned from
-\code{score_dual_vs_single}.
+\code{score_combn_vs_single}.
 }

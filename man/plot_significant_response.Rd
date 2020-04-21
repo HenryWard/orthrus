@@ -13,7 +13,8 @@ plot_significant_response(scores, control_name, condition_name, loess = TRUE)
 
 \item{condition_name}{Name of condition passed to \code{call_significant_response}.}
 
-\item{loess}{If true and data was loess-normalized, plots loess null model instead.}
+\item{loess}{If true and data was loess-normalized, plots loess null model instead
+(default TRUE).}
 }
 \value{
 A ggplot object.

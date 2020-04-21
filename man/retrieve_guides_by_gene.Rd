@@ -4,7 +4,15 @@
 \alias{retrieve_guides_by_gene}
 \title{Retrieve guide values for gene pairs}
 \usage{
-retrieve_guides_by_gene(df, gene_pairs, gene_col1, gene_col2, guide_cols)
+retrieve_guides_by_gene(
+  df,
+  gene_pairs,
+  gene_col1,
+  gene_col2,
+  guide_cols,
+  id_col1 = NULL,
+  id_col2 = NULL
+)
 }
 \arguments{
 \item{df}{A dataframe where each row corresponds to a single guide construct that targets 
@@ -19,6 +27,12 @@ denoted as "---" and non-targeted genes must be denoted as "None".}
 \item{gene_col2}{See above.}
 
 \item{guide_cols}{A list of all columns containing log-normalized fold-changes.}
+
+\item{id_col1}{A column containing guide-specific indices, e.g. guide sequences or IDs, for
+guides in gene_col1 (optional, default NULL).}
+
+\item{id_col2}{A column containing guide-specific indices, e.g. guide sequences or IDs, for
+guides in gene_col2 (optional, default NULL).}
 }
 \value{
 A list indexed by unique gene pairs that contains the gene names in the keys 

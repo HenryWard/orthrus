@@ -7,7 +7,7 @@
 #' Scores guides for any number of condition screens against a control screen
 #' (e.g. for directly comparing drug response to DMSO response). Do NOT use 
 #' this function if you would like to compare guides against a null model 
-#' derived from single-gene effects. In that case, call \code{score_dual_vs_single}
+#' derived from single-gene effects. In that case, call \code{score_combn_vs_single}
 #' instead. After running this function, pass the resulting dataframe to 
 #' \code{call_significant_response} to call significant effects.
 #' 
@@ -196,7 +196,7 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
 #' resulting dataframe to \code{call_significant_response_dual} to call significant 
 #' effects.
 #' 
-#' @param dual_guides A list of exonic-exonic guides returned from \code{retrieve_guides_by_label} 
+#' @param combn_guides A list of exonic-exonic guides returned from \code{retrieve_guides_by_label} 
 #'   or from the exonic-exonic entry of \code{split_guides_by_type}.
 #' @param single_guides A list of exonic-intergenic guides returned from \code{retrieve_guides_by_label} 
 #'   or from the exonic-intergenic entry of \code{split_guides_by_type}.
@@ -216,9 +216,9 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
 #' @return A dataframe of scored data with separate columns given by the specified control
 #'   and condition names.
 #' @export
-score_dual_vs_single <- function(dual_guides, single_guides, ..., 
-                                 min_guides = 3, test = "moderated-t",
-                                 loess = TRUE) {
+score_combn_vs_single <- function(combn_guides, single_guides, ..., 
+                                  min_guides = 3, test = "moderated-t",
+                                  loess = TRUE) {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
@@ -233,23 +233,23 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
   }
   
   # Makes output dataframe
-  scores <- data.frame(gene1 = rep(NA, length(dual_guides)), gene2 = NA)
+  scores <- data.frame(gene1 = rep(NA, length(combn_guides)), gene2 = NA)
   
   # Appends additional columns for each condition
   new_cols <- c()
   for (name in condition_names) {
     new_cols <- c(new_cols, c(
-      paste0("n_dual_", name), 
+      paste0("n_combn_", name), 
       paste0("n_single_", name),
-      paste0("mean_dual_", name),
+      paste0("mean_combn_", name),
       paste0("mean_single_", name),
       paste0("orientation_agree_", name),
-      paste0("differential_dual_vs_single_", name),
-      paste0("pval1_dual_vs_single_", name),
-      paste0("pval2_dual_vs_single_", name),
-      paste0("fdr1_dual_vs_single_", name),
-      paste0("fdr2_dual_vs_single_", name),
-      paste0("significant_dual_vs_single_", name)
+      paste0("differential_combn_vs_single_", name),
+      paste0("pval1_combn_vs_single_", name),
+      paste0("pval2_combn_vs_single_", name),
+      paste0("fdr1_combn_vs_single_", name),
+      paste0("fdr2_combn_vs_single_", name),
+      paste0("significant_combn_vs_single_", name)
     ))
   }
   scores[new_cols] <- NA
@@ -260,7 +260,7 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
   if (test == "moderated-t") {
     
     # Gets max number of guides first
-    for (guide in dual_guides) {
+    for (guide in combn_guides) {
       guide_names <- names(guide)[!(names(guide) %in% c("gene1", "gene2", "guide_type"))]
       guide_num <- max(unlist(lapply(guide_names, function(x) length(guide[[x]]))))
       max_guides <- max(max_guides, guide_num)
@@ -268,7 +268,7 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
     
     # Makes residual dataframes with columns equal to the max number of guides
     for (name in condition_names) {
-      residual_df <- data.frame(matrix(nrow = length(dual_guides), ncol = max_guides))
+      residual_df <- data.frame(matrix(nrow = length(combn_guides), ncol = max_guides))
       colnames(residual_df) <- paste0("guide_residual_", 1:max_guides)
       condition_residuals[[name]][[1]] <- residual_df
       condition_residuals[[name]][[2]] <- residual_df
@@ -278,25 +278,25 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
   # Makes loess residual dataframes if specified, one for each orientation
   loess_residuals <- list()
   if (loess & test == "moderated-t") {
-    loess_residuals[[1]] <- data.frame(n = rep(0, max_guides*length(dual_guides)))
-    loess_residuals[[2]] <- data.frame(n = rep(0, max_guides*length(dual_guides)))
+    loess_residuals[[1]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
+    loess_residuals[[2]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
     for (name in condition_names) {
       loess_residuals[[1]][[paste0("mean_single_", name)]] <- rep(0, nrow(loess_residuals[[1]]))
-      loess_residuals[[1]][[paste0("mean_dual_", name)]] <- rep(0, nrow(loess_residuals[[1]]))
+      loess_residuals[[1]][[paste0("mean_combn_", name)]] <- rep(0, nrow(loess_residuals[[1]]))
       loess_residuals[[2]][[paste0("mean_single_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
-      loess_residuals[[2]][[paste0("mean_dual_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
+      loess_residuals[[2]][[paste0("mean_combn_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
     }
   }
   
   # Scores guides for each condition
   counter1 <- 1
   counter2 <- 1
-  for (i in 1:length(dual_guides)) {
+  for (i in 1:length(combn_guides)) {
     
     # Gets gene names and guide values
-    dual_vals <- dual_guides[[i]]
-    gene1 <- dual_vals$gene1
-    gene2 <- dual_vals$gene2
+    combn_vals <- combn_guides[[i]]
+    gene1 <- combn_vals$gene1
+    gene2 <- combn_vals$gene2
     scores$gene1[i] <- gene1
     scores$gene2[i] <- gene2
     
@@ -305,23 +305,23 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
     single_gene2 <- single_guides[unlist(lapply(single_guides, function(x) x[["gene1"]] == gene2))][[1]]
     
     # Subsets single-targeting guides to matching IDs if given
-    if (!("orient1_id1" %in% names(dual_vals) & "orient1_id2" %in% names(dual_vals))) {
-      single_gene1 <- single_gene1[single_gene1[["orient1_id1"]] %in% dual_vals[["orient1_id1"]] |
-                                     single_gene1[["orient2_id2"]] %in% dual_vals[["orient2_id2"]]]
-      single_gene2 <- single_gene2[single_gene2[["orient1_id1"]] %in% dual_vals[["orient2_id1"]] |
-                                     single_gene2[["orient2_id2"]] %in% dual_vals[["orient1_id2"]]]
+    if (!("orient1_id1" %in% names(combn_vals) & "orient1_id2" %in% names(combn_vals))) {
+      single_gene1 <- single_gene1[single_gene1[["orient1_id1"]] %in% combn_vals[["orient1_id1"]] |
+                                     single_gene1[["orient2_id2"]] %in% combn_vals[["orient2_id2"]]]
+      single_gene2 <- single_gene2[single_gene2[["orient1_id1"]] %in% combn_vals[["orient2_id1"]] |
+                                     single_gene2[["orient2_id2"]] %in% combn_vals[["orient1_id2"]]]
     }
     
-    # Scores dual-targeting guides vs. single-targeting null model
+    # Scores combn-targeting guides vs. single-targeting null model
     for (name in condition_names) {
       
       # Gets column names for each orientation and the current condition
       orient1 <- condition_cols[[name]][["orient1"]]
       orient2 <- condition_cols[[name]][["orient2"]]
       
-      # Takes the dual-targeting mean across replicates
-      dual1 <- rowMeans(data.frame(dual_vals[orient1]))
-      dual2 <- rowMeans(data.frame(dual_vals[orient2]))
+      # Takes the combn-targeting mean across replicates
+      combn1 <- rowMeans(data.frame(combn_vals[orient1]))
+      combn2 <- rowMeans(data.frame(combn_vals[orient2]))
       
       # Gets guide values for single-targeting guides
       single_gene1_orient1 <- rowMeans(data.frame(single_gene1[orient1]))
@@ -332,13 +332,13 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
       # Gets null model by summing different orientations of single-targeting guides
       null1 <- c()
       null2 <- c()
-      if (!("orient1_id1" %in% names(dual_vals) & "orient1_id2" %in% names(dual_vals))) {
+      if (!("orient1_id1" %in% names(combn_vals) & "orient1_id2" %in% names(combn_vals))) {
         null1 <- unlist(apply(expand.grid(single_gene1_orient1, single_gene2_orient2), 1, sum))
         null2 <- unlist(apply(expand.grid(single_gene1_orient2, single_gene2_orient1), 1, sum))
       } else {
-        for (j in 1:length(dual1)) {
-          id1 <- dual_vals[["orient1_id1"]][j]
-          id2 <- dual_vals[["orient1_id2"]][j]
+        for (j in 1:length(combn1)) {
+          id1 <- combn_vals[["orient1_id1"]][j]
+          id2 <- combn_vals[["orient1_id2"]][j]
           val1 <- single_gene1_orient1[single_gene1[["orient1_id1"]] == id1]
           val2 <- single_gene2_orient2[single_gene2[["orient2_id2"]] == id2]
           if (length(val1) > 1) {
@@ -351,9 +351,9 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
           }
           null1 <- c(null1, val1 + val2)
         }
-        for (j in 1:length(dual2)) {
-          id1 <- dual_vals[["orient2_id1"]][j]
-          id2 <- dual_vals[["orient2_id2"]][j]
+        for (j in 1:length(combn2)) {
+          id1 <- combn_vals[["orient2_id1"]][j]
+          id2 <- combn_vals[["orient2_id2"]][j]
           val1 <- single_gene1_orient2[single_gene1[["orient2_id2"]] == id2]
           val2 <- single_gene2_orient1[single_gene2[["orient1_id1"]] == id1]
           if (length(val1) > 1) { 
@@ -369,35 +369,35 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
       }
       
       # Appends values for loess-normalization to residual dataframe if necessary
-      ind1 <- counter1:(counter1 + length(dual1) - 1)
-      ind2 <- counter2:(counter2 + length(dual2) - 1)
+      ind1 <- counter1:(counter1 + length(combn1) - 1)
+      ind2 <- counter2:(counter2 + length(combn2) - 1)
       if (loess & test == "moderated-t") {
         loess_residuals[[1]][["n"]][ind1] <- i
         loess_residuals[[2]][["n"]][ind2] <- i
         loess_residuals[[1]][[paste0("mean_single_", name)]][ind1] <- null1
-        loess_residuals[[1]][[paste0("mean_dual_", name)]][ind1] <- dual1
+        loess_residuals[[1]][[paste0("mean_combn_", name)]][ind1] <- combn1
         loess_residuals[[2]][[paste0("mean_single_", name)]][ind2] <- null2
-        loess_residuals[[2]][[paste0("mean_dual_", name)]][ind2] <- dual2
+        loess_residuals[[2]][[paste0("mean_combn_", name)]][ind2] <- combn2
       }
       
       # Gets residuals
       scores[[paste0("orientation_agree_", name)]][i] <- 
-        (sign(mean(dual1) - mean(null1)) == sign(mean(dual2) - mean(null2)))
-      scores[[paste0("differential_dual_vs_single_", name)]][i] <- mean(c(dual1, dual2)) - mean(c(null1, null2))
+        (sign(mean(combn1) - mean(null1)) == sign(mean(combn2) - mean(null2)))
+      scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean(c(combn1, combn2)) - mean(c(null1, null2))
       
       # Performs the specified type of testing or stores residuals for later testing
       if (test == "rank-sum") {
-        scores[[paste0("pval1_dual_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(dual1, null1))$p.value
-        scores[[paste0("pval2_dual_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(dual2, null2))$p.value 
+        scores[[paste0("pval1_combn_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(combn1, null1))$p.value
+        scores[[paste0("pval2_combn_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(combn2, null2))$p.value 
       } else if (test == "moderated-t") {
-        if (length(dual1) != length(null1)) {
-          print(paste("Length of dual1: ", length(dual1)))
+        if (length(combn1) != length(null1)) {
+          print(paste("Length of combn1: ", length(combn1)))
           print(paste("Length of null1: ", length(null1)))
           print(paste("Gene name 1: ", gene1))
           print(paste("Gene name 2: ", gene2))
         }
-        residuals1 <- dual1 - null1
-        residuals2 <- dual2 - null2
+        residuals1 <- combn1 - null1
+        residuals2 <- combn2 - null2
         if(length(residuals1) < max_guides) { 
           residuals1 <- c(residuals1, rep(NA, max_guides - length(residuals1))) 
         }
@@ -409,13 +409,13 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
       }
       
       # Stores values in dataframe
-      scores[[paste0("n_dual_", name)]][i] <- length(dual1)
+      scores[[paste0("n_combn_", name)]][i] <- length(combn1)
       scores[[paste0("n_single_", name)]][i] <- length(null1)
-      scores[[paste0("mean_dual_", name)]][i] <- mean(c(dual1, dual2))
+      scores[[paste0("mean_combn_", name)]][i] <- mean(c(combn1, combn2))
       scores[[paste0("mean_single_", name)]][i] <- mean(c(null1, null2))
     }
-    counter1 <- counter1 + length(dual1)
-    counter2 <- counter2 + length(dual2)
+    counter1 <- counter1 + length(combn1)
+    counter2 <- counter2 + length(combn2)
   }
   
   # Computes loess-normalized residuals if specified
@@ -425,7 +425,7 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
     for (name in condition_names) {
       for (i in 1:2) {
         null_values <- loess_residuals[[i]][[paste0("mean_single_", name)]]
-        condition_values <- loess_residuals[[i]][[paste0("mean_dual_", name)]]
+        condition_values <- loess_residuals[[i]][[paste0("mean_combn_", name)]]
         temp <- loess_MA(null_values, condition_values)
         loess_residuals[[i]][[paste0("loess_residual_", name)]] <- temp[["residual"]]
         loess_residuals[[i]][[paste0("loess_predicted_", name)]] <- temp[["predicted"]] 
@@ -433,7 +433,7 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
     }
     
     # Replaces residuals with loess-normalized residuals
-    for (i in 1:length(dual_guides)) {
+    for (i in 1:length(combn_guides)) {
       for (name in condition_names) {
         ind1 <- loess_residuals[[1]]$n == i
         ind2 <- loess_residuals[[2]]$n == i
@@ -449,8 +449,8 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
         } 
         condition_residuals[[name]][[1]][i,1:max_guides] <- resid1
         condition_residuals[[name]][[2]][i,1:max_guides] <- resid2
-        scores[[paste0("differential_dual_vs_single_", name)]][i] <- mean(c(resid1, resid2))
-        scores[[paste0("loess_predicted_", name)]][i] <- mean(c(predicted1, predicted2))
+        scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean(c(resid1, resid2))
+        #scores[[paste0("loess_predicted_", name)]][i] <- mean(c(predicted1, predicted2))
       }
     }
   } else if (loess) {
@@ -464,23 +464,23 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
       p_val1 <- ebayes_fit$p.value[,1]
       ebayes_fit <- limma::eBayes(limma::lmFit(condition_residuals[[name]][[2]]))
       p_val2 <- ebayes_fit$p.value[,1]
-      scores[[paste0("pval1_dual_vs_single_", name)]] <- p_val1
-      scores[[paste0("pval2_dual_vs_single_", name)]] <- p_val2
+      scores[[paste0("pval1_combn_vs_single_", name)]] <- p_val1
+      scores[[paste0("pval2_combn_vs_single_", name)]] <- p_val2
     }
   }
   
   # Gets FDRs
   for (name in condition_names) {
-    scores[[paste0("fdr1_dual_vs_single_", name)]] <- 
-      p.adjust(scores[[paste0("pval1_dual_vs_single_", name)]], method = "BH")
-    scores[[paste0("fdr2_dual_vs_single_", name)]] <- 
-      p.adjust(scores[[paste0("pval2_dual_vs_single_", name)]], method = "BH")
+    scores[[paste0("fdr1_combn_vs_single_", name)]] <- 
+      p.adjust(scores[[paste0("pval1_combn_vs_single_", name)]], method = "BH")
+    scores[[paste0("fdr2_combn_vs_single_", name)]] <- 
+      p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = "BH")
   }
   
   # Removes genes with too few observations
   # to_remove <- rep(FALSE, nrow(scores))
   # for (name in condition_names) {
-  #   to_remove <- to_remove | scores[[paste0("n_dual", name)]] < min_guides
+  #   to_remove <- to_remove | scores[[paste0("n_combn", name)]] < min_guides
   #   to_remove <- to_remove | scores[[paste0("n_single", name)]] < min_guides
   # }
   # scores <- scores[!to_remove,]
@@ -493,7 +493,7 @@ score_dual_vs_single <- function(dual_guides, single_guides, ...,
 #' 
 #' Run this to call significant responses for data returned from 
 #' \code{score_conditions_vs_control}. Do NOT run this on data returned from
-#' \code{score_dual_vs_single}.
+#' \code{score_combn_vs_single}.
 #' 
 #' @param scores Dataframe returned from \code{score_conditions_vs_control}.
 #' @param control_cols A list where the first entry is a desired name for a condition, 
@@ -549,13 +549,10 @@ call_significant_response <- function(scores, control_cols, ...,
 #' Call significant responses for scored paired data.
 #' 
 #' Run this to call significant responses for data returned from 
-#' \code{score_dual_vs_single}. Do NOT run this on data returned from
+#' \code{score_combn_vs_single}. Do NOT run this on data returned from
 #' \code{score_conditions_vs_control}.
 #' 
-#' @param scores Dataframe returned from \code{score_dual_vs_single}.
-#' @param control_cols A list where the first entry is a desired name for a condition, 
-#'   e.g. DMSO, and all subsequent values are column names of the technical replicates 
-#'   for that condition. See documentation for \code{score_dual_vs_single}. 
+#' @param scores Dataframe returned from \code{score_combn_vs_single}.
 #' @param ... Any number of lists formatted where the first entry is a desired name for a 
 #'   condition, e.g. DMSO, and all subsequent values are column names of the technical 
 #'   replicates for that condition. All technical replicates specified must have been passed 
@@ -573,9 +570,9 @@ call_significant_response <- function(scores, control_cols, ...,
 #' @return Dataframe of scored data with differential effects called as significant
 #'   for the specified conditions. 
 #' @export
-call_significant_response_dual <- function(scores, ...,
-                                           fdr_threshold = 0.1, differential_threshold = 0,
-                                           neg_type = "Negative", pos_type = "Positive") {
+call_significant_response_combn <- function(scores, ...,
+                                            fdr_threshold = 0.1, differential_threshold = 0,
+                                            neg_type = "Negative", pos_type = "Positive") {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
@@ -587,9 +584,9 @@ call_significant_response_dual <- function(scores, ...,
   
   # Calls significant differences for dual-targeting vs. single-targeting null model
   for (name in condition_names) {
-    scores[[paste0("significant_dual_vs_single_", name)]] <- 
-      scores[[paste0("fdr1_dual_vs_single_", name)]] < fdr_threshold &
-      scores[[paste0("fdr2_dual_vs_single_", name)]] < fdr_threshold &
+    scores[[paste0("significant_combn_vs_single_", name)]] <- 
+      scores[[paste0("fdr1_combn_vs_single_", name)]] < fdr_threshold &
+      scores[[paste0("fdr2_combn_vs_single_", name)]] < fdr_threshold &
       scores[[paste0("orientation_agree_", name)]]
   }
   
@@ -597,8 +594,8 @@ call_significant_response_dual <- function(scores, ...,
   for (name in condition_names) {
     response_col <- paste0("effect_type_", name)
     scores[[response_col]] <- "None"
-    diffs <- scores[[paste0("differential_dual_vs_single_", name)]]
-    sig <- scores[[paste0("significant_dual_vs_single_", name)]]
+    diffs <- scores[[paste0("differential_combn_vs_single_", name)]]
+    sig <- scores[[paste0("significant_combn_vs_single_", name)]]
     scores[[response_col]][sig & diffs < 0 & abs(diffs) > differential_threshold] <- neg_type
     scores[[response_col]][sig & diffs > 0 & abs(diffs) > differential_threshold] <- pos_type
   }

@@ -11,7 +11,9 @@ retrieve_guides_by_label(
   gene_col2,
   label_col1,
   label_col2,
-  guide_cols
+  guide_cols,
+  id_col1 = NULL,
+  id_col2 = NULL
 )
 }
 \arguments{
@@ -32,6 +34,12 @@ intergenic region, which must be labeled as "exonic" or "intergenic".}
 \item{label_col2}{See above, but for gene_col2.}
 
 \item{guide_cols}{A list of all columns containing log-normalized fold-changes.}
+
+\item{id_col1}{A column containing guide-specific indices, e.g. guide sequences or IDs, for
+guides in gene_col1 (optional, default NULL).}
+
+\item{id_col2}{A column containing guide-specific indices, e.g. guide sequences or IDs, for
+guides in gene_col2 (optional, default NULL).}
 }
 \value{
 A list indexed by unique gene pairs that contains the gene names in the keys 
