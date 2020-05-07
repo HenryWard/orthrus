@@ -156,8 +156,8 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
           resid <- c(resid, rep(NA, max_guides - length(resid))) 
         } 
         condition_residuals[[name]][i,1:max_guides] <- resid
-        scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(resid)
-        scores[[paste0("loess_predicted_", name)]][i] <- mean(predicted)
+        scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(resid, na.rm = TRUE)
+        # scores[[paste0("loess_predicted_", name)]][i] <- mean(predicted)
       }
     }
   } else if (loess) {
@@ -213,12 +213,13 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
 #'   Only works when test = "moderated-t" (default TRUE). 
 #' @param min_guides The minimum number of guides per gene pair required to score data 
 #'   (default 3).
+#' @param verbose If true, prints verbose output (default FALSE). 
 #' @return A dataframe of scored data with separate columns given by the specified control
 #'   and condition names.
 #' @export
 score_combn_vs_single <- function(combn_guides, single_guides, ..., 
                                   min_guides = 3, test = "moderated-t",
-                                  loess = TRUE) {
+                                  loess = TRUE, verbose = FALSE) {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
@@ -300,9 +301,20 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
     scores$gene1[i] <- gene1
     scores$gene2[i] <- gene2
     
-    # Finds matching single-targeting guides
-    single_gene1 <- single_guides[unlist(lapply(single_guides, function(x) x[["gene1"]] == gene1))][[1]]
-    single_gene2 <- single_guides[unlist(lapply(single_guides, function(x) x[["gene1"]] == gene2))][[1]]
+    # Finds matching single-targeting guides if any exist
+    single_gene1 <- NULL
+    single_gene2 <- NULL
+    gene1_ind <- unlist(lapply(single_guides, function(x) x[["gene1"]] == gene1))
+    gene2_ind <- unlist(lapply(single_guides, function(x) x[["gene1"]] == gene2))
+    if (sum(gene1_ind) > 0 & sum(gene2_ind) > 0) {
+      single_gene1 <- single_guides[gene1_ind][[1]]
+      single_gene2 <- single_guides[gene2_ind][[1]]
+    } else {
+      if (verbose) {
+        cat(paste(gene1, "and", gene2, "skipped because of too few guides\n"))
+      }
+      next
+    }
     
     # Subsets single-targeting guides to matching IDs if given
     if (!("orient1_id1" %in% names(combn_vals) & "orient1_id2" %in% names(combn_vals))) {
@@ -310,9 +322,15 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
                                      single_gene1[["orient2_id2"]] %in% combn_vals[["orient2_id2"]]]
       single_gene2 <- single_gene2[single_gene2[["orient1_id1"]] %in% combn_vals[["orient2_id1"]] |
                                      single_gene2[["orient2_id2"]] %in% combn_vals[["orient1_id2"]]]
+      combn_vals <- combn_vals[combn_vals[["orient1_id1"]] %in% single_gene1[["orient1_id1"]] &
+                                 combn_vals[["orient1_id2"]] %in% single_gene2[["orient2_id2"]]]
+      combn_vals <- combn_vals[combn_vals[["orient2_id1"]] %in% single_gene2[["orient1_id1"]] &
+                                 combn_vals[["orient2_id2"]] %in% single_gene1[["orient2_id2"]]]
     }
     
     # Scores combn-targeting guides vs. single-targeting null model
+    increment1 <- 0
+    increment2 <- 0
     for (name in condition_names) {
       
       # Gets column names for each orientation and the current condition
@@ -343,13 +361,21 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
           val2 <- single_gene2_orient2[single_gene2[["orient2_id2"]] == id2]
           if (length(val1) > 1) {
             val1 <- mean(val1) 
-            #cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            if (verbose) {
+              cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            }
           }
           if (length(val2) > 1) { 
             val2 <- mean(val2) 
-            #cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            if (verbose) {
+              cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            }
           }
-          null1 <- c(null1, val1 + val2)
+          if (length(val1) > 0 & length(val2) > 0) {
+            null1 <- c(null1, val1 + val2)
+          } else {
+            null1 <- c(null1, NA)
+          }
         }
         for (j in 1:length(combn2)) {
           id1 <- combn_vals[["orient2_id1"]][j]
@@ -358,14 +384,37 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
           val2 <- single_gene2_orient1[single_gene2[["orient1_id1"]] == id1]
           if (length(val1) > 1) { 
             val1 <- mean(val1) 
-            #cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            if (verbose) {
+              cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            }
           }
           if (length(val2) > 1) { 
             val2 <- mean(val2) 
-            #cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            if (verbose) {
+              cat(paste("Warning: taking mean of single-gene effects for", gene1, "/", gene2, "in ", name, "\n"))
+            }
           }
-          null2 <- c(null2, val1 + val2)
+          if (length(val1) > 0 & length(val2) > 0) {
+            null2 <- c(null2, val1 + val2)
+          } else {
+            null2 <- c(null2, NA)
+          }
         }
+      }
+      
+      # Subsets combinatorial guides to existing expected values
+      combn1 <- combn1[!is.na(null1)]
+      combn2 <- combn2[!is.na(null2)]
+      null1 <- null1[!is.na(null1)]
+      null2 <- null2[!is.na(null2)]
+      
+      # Skips if too few guides
+      if (length(null1) < 2 | length(null2) < 2 |
+          length(combn1) < 2 | length(combn2) < 2) {
+        if (verbose) {
+          cat(paste(gene1, "and", gene2, "in", name, "skipped because of too few guides\n"))
+        }
+        next
       }
       
       # Appends values for loess-normalization to residual dataframe if necessary
@@ -390,12 +439,6 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
         scores[[paste0("pval1_combn_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(combn1, null1))$p.value
         scores[[paste0("pval2_combn_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(combn2, null2))$p.value 
       } else if (test == "moderated-t") {
-        if (length(combn1) != length(null1)) {
-          print(paste("Length of combn1: ", length(combn1)))
-          print(paste("Length of null1: ", length(null1)))
-          print(paste("Gene name 1: ", gene1))
-          print(paste("Gene name 2: ", gene2))
-        }
         residuals1 <- combn1 - null1
         residuals2 <- combn2 - null2
         if(length(residuals1) < max_guides) { 
@@ -407,15 +450,19 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
         condition_residuals[[name]][[1]][i,1:max_guides] <- residuals1 
         condition_residuals[[name]][[2]][i,1:max_guides] <- residuals2 
       }
-      
+
       # Stores values in dataframe
       scores[[paste0("n_combn_", name)]][i] <- length(combn1)
       scores[[paste0("n_single_", name)]][i] <- length(null1)
       scores[[paste0("mean_combn_", name)]][i] <- mean(c(combn1, combn2))
       scores[[paste0("mean_single_", name)]][i] <- mean(c(null1, null2))
+      
+      # Increments counter after looping through all conditions
+      increment1 <- length(combn1)
+      increment2 <- length(combn2)
     }
-    counter1 <- counter1 + length(combn1)
-    counter2 <- counter2 + length(combn2)
+    counter1 <- counter1 + increment1
+    counter2 <- counter2 + increment2
   }
   
   # Computes loess-normalized residuals if specified
@@ -449,7 +496,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
         } 
         condition_residuals[[name]][[1]][i,1:max_guides] <- resid1
         condition_residuals[[name]][[2]][i,1:max_guides] <- resid2
-        scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean(c(resid1, resid2))
+        scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean(c(resid1, resid2), na.rm = TRUE)
         #scores[[paste0("loess_predicted_", name)]][i] <- mean(c(predicted1, predicted2))
       }
     }
@@ -476,14 +523,6 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
     scores[[paste0("fdr2_combn_vs_single_", name)]] <- 
       p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = "BH")
   }
-  
-  # Removes genes with too few observations
-  # to_remove <- rep(FALSE, nrow(scores))
-  # for (name in condition_names) {
-  #   to_remove <- to_remove | scores[[paste0("n_combn", name)]] < min_guides
-  #   to_remove <- to_remove | scores[[paste0("n_single", name)]] < min_guides
-  # }
-  # scores <- scores[!to_remove,]
   
   # Explicitly returns scoresd data
   return(scores)

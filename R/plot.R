@@ -36,10 +36,21 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
 #' @param ycol Name of column containing values to plot on the y-axis.
 #' @param color_col Name of column to color points by (optional).
 #' @param color_lab Name of color legend (optional, defaults to color_col).
+#' @param print_cor If true, prints Pearson correlation between columns 
+#'   (default FALSE).
 #' @return A ggplot object.
 #' @export
 plot_samples <- function(df, xcol, ycol, xlab, ylab, 
-                         color_col = NULL, color_lab = NULL) {
+                         color_col = NULL, color_lab = NULL,
+                         print_cor = FALSE) {
+  
+  # Optionally prints Pearson correlation between given columns
+  if (print_cor) {
+    pcc <- cor(df[[xcol]], df[[ycol]])
+    cat(paste("Pearson correlation between", xcol, "and", ycol, ":", pcc, "\n"))
+  }
+  
+  # Makes plot
   p <- NULL
   if (is.null(color_col)) {
     p <- ggplot2::ggplot(df, aes_string(x = xcol, y = ycol)) +
@@ -200,7 +211,7 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +
     ggplot2::xlab(paste0(condition_name, " mean expected single-targeted log FC")) +
-    ggplot2::ylab(paste0(condition_name, " mean dual-targeted log FC")) +
+    ggplot2::ylab(paste0(condition_name, " mean observed combinatorial-targeted log FC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20) +
