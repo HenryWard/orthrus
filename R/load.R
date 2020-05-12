@@ -107,28 +107,34 @@ retrieve_guides_by_gene <- function(df, gene_pairs, gene_col1, gene_col2, guide_
 #' 
 #' @param df A dataframe where each row corresponds to a single guide construct that targets 
 #'   two genes, which contains the columns named in the variables gene_col1, gene_col2, 
-#'   label_col1, label_col2 and guide_cols.
+#'   label_col1, label_col2 and replicate columns in screens.
 #' @param gene_pairs Dataframe returned by \code{unique_gene_pairs}.
+#' @param screens List of screens generated with \code{add_screens}.
 #' @param gene_col1 A column containing the first of two gene names. Intergenic regions must be 
 #'   denoted as "---" and non-targeted genes must be denoted as "None". 
 #' @param gene_col2 See above. 
 #' @param label_col1 A column specify whether the guide in gene_col1 targeted an exonic or
 #'   intergenic region, which must be labeled as "exonic" or "intergenic". 
 #' @param label_col2 See above, but for gene_col2. 
-#' @param guide_cols A list of all columns containing log-normalized fold-changes.
 #' @param id_col1 A column containing guide-specific indices, e.g. guide sequences or IDs, for
 #'   guides in gene_col1 (optional, default NULL).  
 #' @param id_col2 A column containing guide-specific indices, e.g. guide sequences or IDs, for
 #'   guides in gene_col2 (optional, default NULL). 
 #' @return A list indexed by unique gene pairs that contains the gene names in the keys 
-#'   "gene1" and "gene2". Each column specified in guide_cols has its guide values 
+#'   "gene1" and "gene2". Each column contained in each screen's replicates has its guide values 
 #'   stored in two keys, one for each orientation. For instance, the column "DMSO_T15"
 #'   will have its values stored in the keys "orient1_DMSO_T15" and "orient2_DMSO_T15".
 #'   The guide type is additionally contained in the key "guide_type". 
 #' @export
-retrieve_guides_by_label <- function(df, gene_pairs, gene_col1, gene_col2, 
-                                     label_col1, label_col2, guide_cols,
+retrieve_guides_by_label <- function(df, gene_pairs, screens,
+                                     gene_col1, gene_col2, label_col1, label_col2,
                                      id_col1 = NULL, id_col2 = NULL) {
+  
+  # Gets all columns
+  guide_cols <- c()
+  for (screen in screens) {
+   guide_cols <- c(guide_cols, screen[["replicates"]]) 
+  }
   
   # Constructs output list of guide-level values for the given columns
   guides <- list()
@@ -244,18 +250,124 @@ split_guides_by_type <- function(guides) {
               "exonic_exonic" = pairwise_targeted))
 }
 
+#' Normalizes reads for given screens
+#' 
+#' Log2 and depth-normalizes reads between a given list of columns and a given
+#' column of an earlier timepoint (e.g. T0) specified in the "normalize_name"
+#' entry of each screen. Screens with NULL for their "normalize_name" entry
+#' are log2 and depth-normalized, but not normalized to earlier timepoints.
+#' If a screen to normalize against has multiple replicates, those replicates
+#' are averaged before normalization. Multiple replicates for a screen being
+#' normalized, however, are normalized separately against the provided early
+#' timepoint.
+#' 
+#' @param df Reads dataframe.
+#' @param screens List of screens generated with \code{add_screens}. 
+#' @param filter_names List of screen names to filter based on read counts by. 
+#' @param cf1 Scaling factor (default 1e6).
+#' @param cf2 Pseudocount (default 1).
+#' @param min_reads Minimum number of reads to keep (default 30, anything
+#'   below this value will be filtered out).
+#' @param max_reads Maximum number of reads to keep (default 10000, anything
+#'   above this value will be filtered out).
+#' @return Normalized dataframe.
+#' @export 
+normalize_screens <- function(df, screens, filter_names = NULL, cf1 = 1e6, cf2 = 1, 
+                              min_reads = 30, max_reads = 10000) {
+  
+  # Flags guides with too few read counts
+  all_names <- names(screens)
+  for (name in filter_names) {
+    if (!(name %in% all_names)) {
+      cat(paste("WARNING: screen", name, "not found, data not filtered by this screen\n"))
+    }
+  }
+  to_remove <- rep(FALSE, nrow(df))
+  filter_cols <- sapply(screens[filter_names], "[[", "replicates")
+  for (col in filter_cols) {
+    to_remove[df[,col] < min_reads] <- TRUE
+  }
+  sum_low <- sum(to_remove)
+  for (col in filter_cols) {
+    to_remove[df[,col] > max_reads] <- TRUE
+  }
+  sum_high <- sum(to_remove) - sum_low
+  removed_guides_ind <- which(to_remove)
+  
+  # Log2 and depth-normalizes every screen
+  for (screen in screens) {
+    for (col in screen[["replicates"]]) {
+      df[,col] <- normalize_reads(df[,col], cf1, cf2)
+    }
+  }
+  
+  # Normalizes specified screens to earlier timepoints
+  for (screen in screens) {
+    normalize_name <- screen[["normalize_name"]]
+    if (!is.null(normalize_name)) {
+      if (normalize_name %in% all_names) {
+        for (col in screen[["replicates"]]) {
+          rep_cols <- screens[[normalize_name]][["replicates"]]
+          rep_norm <- df[,rep_cols]
+          if (length(rep_cols) > 1) {
+            rep_norm <- rowMeans(rep_norm)
+          }
+          df[,col] <- df[,col] - rep_norm
+        }
+      } else {
+        cat(paste("WARNING: screen", normalize_name, "not found.\n"))
+      }
+    }
+  }
+  
+  # Removes flagged guides
+  df <- df[!to_remove,]
+  cat(paste("Excluded a total of", sum_low, "guides for low t0 representation\n"))
+  cat(paste("Excluded a total of", sum_high, "guides for high t0 representation\n"))
+  return(df)
+}
+
+#' Filters guides with too few read counts.
+#' 
+#' Filters guides out with too few read counts from a given reads dataframe
+#' and a given set of columns (e.g. T0 columns).
+#' 
+#' @param df Reads dataframe.
+#' @param cols Columns to filter by.
+#' @param min_reads Minimum number of reads to keep (anything below
+#'   this value will be filtered out).
+#' @param max_reads Maximum number of reads to keep (anything above
+#'   this value will be filtered out).
+#' @return Filtered dataframe.
+filter_reads <- function(df, cols, min_reads = 30, max_reads = 10000) {
+  to_remove <- rep(FALSE, nrow(df))
+  for (col in cols) {
+    to_remove[df[,col] < min_reads] <- TRUE
+  }
+  sum_low <- sum(to_remove)
+  for (col in cols) {
+    to_remove[df[,col] > max_reads] <- TRUE
+  }
+  sum_high <- sum(to_remove) - sum_low
+  removed_guides_ind <- which(to_remove)
+  df <- df[!to_remove,]
+  cat(paste("Excluded a total of", sum_low, "guides for low t0 representation\n"))
+  cat(paste("Excluded a total of", sum_high, "guides for low t0 representation\n"))
+  return(df)
+}
+
 #' Log-normalizes reads.
 #' 
 #' Log2-normalizes reads with a given pseudocount and scaling factor, and also
 #' depth-normalizes the data. 
 #' 
-#' @param data List of read counts
-#' @param cf1 Scaling factor (default 1e6)
-#' @param cf2 Pseudocount (default 1)
-#' @return Log- and depth-normalized read counts
+#' @param df List of read counts.
+#' @param cf1 Scaling factor (default 1e6).
+#' @param cf2 Pseudocount (default 1).
+#' @return Log- and depth-normalized read counts.
 #' @export
-normalize_reads <- function(data, cf1 = 1e6, cf2 = 1) {
-  log2((data / sum(data, na.rm = TRUE)) * cf1 + cf2)
+normalize_reads <- function(df, cf1 = 1e6, cf2 = 1) {
+  log2((df / sum(df, na.rm = TRUE)) * cf1 + cf2)
 }
 
 # Inner function to get sorted merge of two columns for a single row. 

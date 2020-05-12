@@ -6,8 +6,9 @@
 \usage{
 score_conditions_vs_control(
   guides,
-  control_cols,
-  ...,
+  screens,
+  control_screen_name,
+  condition_screen_names,
   min_guides = 3,
   test = "moderated-t",
   loess = TRUE
@@ -17,14 +18,12 @@ score_conditions_vs_control(
 \item{guides}{A list of guides returned from \code{retrieve_guides_by_label} or 
 from an entry of \code{split_guides_by_type}.}
 
-\item{control_cols}{A list where the first entry is a desired name for a condition, 
-e.g. DMSO, and all subsequent values are column names of the technical replicates 
-for that condition. All technical replicates specified must have been passed to
-\code{retrieve_guides_by_gene} or \code{retrieve_guides_by_gene} in the guide_cols
-argument. For example, c("DMSO", "DMSO_T15A", "DMSO_T15B", "DMSO_T15C").}
+\item{screens}{List of screens generated with \code{add_screens}.}
 
-\item{...}{Any number of conditions to score against the specified control, passed 
-in as separate lists formatted the same as control_cols.}
+\item{control_screen_name}{Name of a control screen to test condition screens against.}
+
+\item{condition_screen_names}{A list of condition screen names to score against the 
+control screen.}
 
 \item{min_guides}{The minimum number of guides per gene pair required to score data 
 (default 3).}

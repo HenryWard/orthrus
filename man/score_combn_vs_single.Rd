@@ -7,10 +7,12 @@
 score_combn_vs_single(
   combn_guides,
   single_guides,
-  ...,
+  screens,
+  screen_names,
   min_guides = 3,
   test = "moderated-t",
-  loess = TRUE
+  loess = TRUE,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -20,13 +22,10 @@ or from the exonic-exonic entry of \code{split_guides_by_type}.}
 \item{single_guides}{A list of exonic-intergenic guides returned from \code{retrieve_guides_by_label} 
 or from the exonic-intergenic entry of \code{split_guides_by_type}.}
 
-\item{...}{Any number of lists to score against a multiplicative null model derived 
-from single-gene effects. Each list must be formatted where the first entry is a 
-desired name for a condition, e.g. DMSO, and all subsequent values are column names 
-of the technical replicates for that condition. All technical replicates specified 
-must have been passed to \code{retrieve_guides_by_gene} or 
-\code{retrieve_guides_by_label} in the guide_cols argument. For example, 
-\code{c("DMSO", "DMSO_T15A", "DMSO_T15B", "DMSO_T15C")}.}
+\item{screens}{List of screens generated with \code{add_screens}.}
+
+\item{screen_names}{A list of screen names to score against a derived null model from
+single-gene effects.}
 
 \item{min_guides}{The minimum number of guides per gene pair required to score data 
 (default 3).}
@@ -36,6 +35,8 @@ rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t"
 
 \item{loess}{If true, loess-normalizes residuals before running hypothesis testing.
 Only works when test = "moderated-t" (default TRUE).}
+
+\item{verbose}{If true, prints verbose output (default FALSE).}
 }
 \value{
 A dataframe of scored data with separate columns given by the specified control

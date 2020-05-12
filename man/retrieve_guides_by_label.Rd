@@ -7,11 +7,11 @@
 retrieve_guides_by_label(
   df,
   gene_pairs,
+  screens,
   gene_col1,
   gene_col2,
   label_col1,
   label_col2,
-  guide_cols,
   id_col1 = NULL,
   id_col2 = NULL
 )
@@ -19,9 +19,11 @@ retrieve_guides_by_label(
 \arguments{
 \item{df}{A dataframe where each row corresponds to a single guide construct that targets 
 two genes, which contains the columns named in the variables gene_col1, gene_col2, 
-label_col1, label_col2 and guide_cols.}
+label_col1, label_col2 and replicate columns in screens.}
 
 \item{gene_pairs}{Dataframe returned by \code{unique_gene_pairs}.}
+
+\item{screens}{List of screens generated with \code{add_screens}.}
 
 \item{gene_col1}{A column containing the first of two gene names. Intergenic regions must be 
 denoted as "---" and non-targeted genes must be denoted as "None".}
@@ -33,8 +35,6 @@ intergenic region, which must be labeled as "exonic" or "intergenic".}
 
 \item{label_col2}{See above, but for gene_col2.}
 
-\item{guide_cols}{A list of all columns containing log-normalized fold-changes.}
-
 \item{id_col1}{A column containing guide-specific indices, e.g. guide sequences or IDs, for
 guides in gene_col1 (optional, default NULL).}
 
@@ -43,7 +43,7 @@ guides in gene_col2 (optional, default NULL).}
 }
 \value{
 A list indexed by unique gene pairs that contains the gene names in the keys 
-  "gene1" and "gene2". Each column specified in guide_cols has its guide values 
+  "gene1" and "gene2". Each column contained in each screen's replicates has its guide values 
   stored in two keys, one for each orientation. For instance, the column "DMSO_T15"
   will have its values stored in the keys "orient1_DMSO_T15" and "orient2_DMSO_T15".
   The guide type is additionally contained in the key "guide_type".

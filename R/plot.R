@@ -2,6 +2,54 @@
 # PLOTTING CODE
 ######
 
+#' Plot replicate comparisons.
+#' 
+#' Plots replicate comparisons for all replicates in a list of screens and outputs
+#' plots to a given folder.
+#' 
+#' @param df Reads or lfc dataframe.
+#' @param screens List of screens created with \code{add_screens}.
+#' @param output_folder Folder to output plots to. 
+#' @export 
+plot_rep_comparisons <- function(df, screens, output_folder) {
+  for (screen in screens) {
+    rep_cols <- screen[["replicates"]]
+    if (length(rep_cols) > 1) {
+      pairs <- combn(rep_cols, 2)
+      for (i in 1:ncol(pairs)) {
+        col1 <- pairs[1,i]
+        col2 <- pairs[2,i]
+        x_label <- paste0(col1, " log fold change")
+        y_label <- paste0(col2, " log fold change")
+        p <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE)
+        file_name <- paste0(col1, "_vs_", col2, "_replicate_comparison.png")
+        ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+      }   
+    }
+  }
+}
+
+#' Plot read counts for a screen.
+#' 
+#' Plots a histogram of read counts for each replicate of all screens.
+#' 
+#' @param df Reads dataframes.
+#' @param screens List of screens created with \code{add_screens}.
+#' @param output_folder Folder to output plots to. 
+#' @param log_scale If true, log-normalizes data.
+#' @param pseudocount Pseudocounts to add to log-normalized data if specified (default 1).
+#' @export
+plot_screen_reads <- function(df, screens, output_folder, 
+                              log_scale = TRUE, pseudocount = 1) {
+  for (screen in screens) {
+    for (col in screen[["replicates"]]) {
+      p <- plot_reads(df, col, log_scale, pseudocount)
+      file_name <- paste0(col, "_raw_reads_histogram.png")
+      ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)  
+    } 
+  }
+}
+
 #' Plot read counts.
 #'
 #' Plots a histogram of read counts for a given column.
@@ -11,7 +59,6 @@
 #' @param log_scale If true, log-normalizes data.
 #' @param pseudocount Pseudocounts to add to log-normalized data if specified (default 1).
 #' @return A ggplot object.
-#' @export
 plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
   x_label <- paste(col, "log-normalized read counts")
   y_label <- "Number of read counts"

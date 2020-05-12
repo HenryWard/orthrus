@@ -4,7 +4,16 @@
 \alias{plot_samples}
 \title{Plots sample comparisons.}
 \usage{
-plot_samples(df, xcol, ycol, xlab, ylab, color_col = NULL, color_lab = NULL)
+plot_samples(
+  df,
+  xcol,
+  ycol,
+  xlab,
+  ylab,
+  color_col = NULL,
+  color_lab = NULL,
+  print_cor = FALSE
+)
 }
 \arguments{
 \item{df}{Reads or lfc dataframe.}
@@ -16,6 +25,9 @@ plot_samples(df, xcol, ycol, xlab, ylab, color_col = NULL, color_lab = NULL)
 \item{color_col}{Name of column to color points by (optional).}
 
 \item{color_lab}{Name of color legend (optional, defaults to color_col).}
+
+\item{print_cor}{If true, prints Pearson correlation between columns 
+(default FALSE).}
 }
 \value{
 A ggplot object.

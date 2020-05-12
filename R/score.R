@@ -13,13 +13,10 @@
 #' 
 #' @param guides A list of guides returned from \code{retrieve_guides_by_label} or 
 #'   from an entry of \code{split_guides_by_type}.
-#' @param control_cols A list where the first entry is a desired name for a condition, 
-#'   e.g. DMSO, and all subsequent values are column names of the technical replicates 
-#'   for that condition. All technical replicates specified must have been passed to
-#'   \code{retrieve_guides_by_gene} or \code{retrieve_guides_by_gene} in the guide_cols
-#'   argument. For example, c("DMSO", "DMSO_T15A", "DMSO_T15B", "DMSO_T15C"). 
-#' @param ... Any number of conditions to score against the specified control, passed 
-#'   in as separate lists formatted the same as control_cols. 
+#' @param screens List of screens generated with \code{add_screens}.
+#' @param control_screen_name Name of a control screen to test condition screens against.
+#' @param condition_screen_names A list of condition screen names to score against the 
+#'   control screen.
 #' @param min_guides The minimum number of guides per gene pair required to score data 
 #'   (default 3).
 #' @param test Type of hypothesis testing to run. Must be one of "rank-sum" for Wilcoxon
@@ -29,19 +26,17 @@
 #' @return A dataframe of scored data with separate columns given by the specified control
 #'   and condition names.
 #' @export
-score_conditions_vs_control <- function(guides, control_cols, ..., 
-                                        min_guides = 3, test = "moderated-t",
-                                        loess = TRUE) {
+score_conditions_vs_control <- function(guides, screens, control_screen_name, condition_screen_names, 
+                                        min_guides = 3, test = "moderated-t", loess = TRUE) {
   
   # Gets condition names and columns for any number of conditions
-  control_name <- control_cols[1]
-  control_cols <- control_cols[2:length(control_cols)]
+  control_name <- control_screen_name
+  control_cols <- screens[[control_name]][["replicates"]]
   condition_names <- c()
   condition_cols <- list()
-  for (condition in list(...)) {
-    name <- condition[1]
-    condition_names <- c(condition_names, name)
-    condition_cols[[name]] <- condition[2:length(condition)]
+  for (condition in condition_screen_names) {
+    condition_names <- c(condition_names, condition)
+    condition_cols[[condition]] <- screens[[condition]][["replicates"]]
   }
   
   # Makes output dataframe
@@ -200,13 +195,9 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
 #'   or from the exonic-exonic entry of \code{split_guides_by_type}.
 #' @param single_guides A list of exonic-intergenic guides returned from \code{retrieve_guides_by_label} 
 #'   or from the exonic-intergenic entry of \code{split_guides_by_type}.
-#' @param ... Any number of lists to score against a multiplicative null model derived 
-#'   from single-gene effects. Each list must be formatted where the first entry is a 
-#'   desired name for a condition, e.g. DMSO, and all subsequent values are column names 
-#'   of the technical replicates for that condition. All technical replicates specified 
-#'   must have been passed to \code{retrieve_guides_by_gene} or 
-#'   \code{retrieve_guides_by_label} in the guide_cols argument. For example, 
-#'   \code{c("DMSO", "DMSO_T15A", "DMSO_T15B", "DMSO_T15C")}. 
+#' @param screens List of screens generated with \code{add_screens}.
+#' @param screen_names A list of screen names to score against a derived null model from
+#'   single-gene effects.
 #' @param test Type of hypothesis testing to run. Must be one of "rank-sum" for Wilcoxon
 #'   rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t").
 #' @param loess If true, loess-normalizes residuals before running hypothesis testing.
@@ -217,20 +208,20 @@ score_conditions_vs_control <- function(guides, control_cols, ...,
 #' @return A dataframe of scored data with separate columns given by the specified control
 #'   and condition names.
 #' @export
-score_combn_vs_single <- function(combn_guides, single_guides, ..., 
+score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_names, 
                                   min_guides = 3, test = "moderated-t",
                                   loess = TRUE, verbose = FALSE) {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
   condition_cols <- list()
-  for (condition in list(...)) {
-    name <- condition[1]
-    condition_names <- c(condition_names, name)
-    orient1 <- paste0("orient1_", condition[2:length(condition)])
-    orient2 <- paste0("orient2_", condition[2:length(condition)])
-    condition_cols[[name]][["orient1"]] <- orient1
-    condition_cols[[name]][["orient2"]] <- orient2
+  for (condition in screen_names) {
+    condition_names <- c(condition_names, condition)
+    rep_names <- screens[[condition]][["replicates"]]
+    orient1 <- paste0("orient1_", rep_names)
+    orient2 <- paste0("orient2_", rep_names)
+    condition_cols[[condition]][["orient1"]] <- orient1
+    condition_cols[[condition]][["orient2"]] <- orient2
   }
   
   # Makes output dataframe
@@ -535,11 +526,9 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
 #' \code{score_combn_vs_single}.
 #' 
 #' @param scores Dataframe returned from \code{score_conditions_vs_control}.
-#' @param control_cols A list where the first entry is a desired name for a condition, 
-#'   e.g. DMSO, and all subsequent values are column names of the technical replicates 
-#'   for that condition. See documentation for \code{score_conditions_vs_control}. 
-#' @param ... Any number of conditions to score against the specified control, passed 
-#'   in as separate lists formatted the same as control_cols.
+#' @param control_screen_name Name of a control screen to test condition screens against.
+#' @param condition_screen_names A list of condition screen names to score against the 
+#'   control screen.
 #' @param fdr_threshold Threshold below which to call gene effects as significant 
 #'   (default 0.1).
 #' @param differential_threshold Absolute value threshold on differential effects, 
@@ -551,18 +540,15 @@ score_combn_vs_single <- function(combn_guides, single_guides, ...,
 #' @return Dataframe of scored data with differential effects called as significant
 #'   for the specified conditions. 
 #' @export
-call_significant_response <- function(scores, control_cols, ...,
+call_significant_response <- function(scores, control_screen_name, condition_screen_names,
                                       fdr_threshold = 0.1, differential_threshold = 0,
                                       neg_type = "Negative", pos_type = "Positive") {
   
   # Gets condition names and columns for any number of conditions
-  control_name <- control_cols[1]
-  control_cols <- control_cols[2:length(control_cols)]
+  control_name <- control_screen_name
   condition_names <- c()
-  condition_cols <- list()
-  for (condition in list(...)) {
-    name <- condition[1]
-    condition_names <- c(condition_names, name)
+  for (condition in condition_screen_names) {
+    condition_names <- c(condition_names, condition)
   }
   
   # Calls significant differences for each condition against the control
@@ -592,12 +578,8 @@ call_significant_response <- function(scores, control_cols, ...,
 #' \code{score_conditions_vs_control}.
 #' 
 #' @param scores Dataframe returned from \code{score_combn_vs_single}.
-#' @param ... Any number of lists formatted where the first entry is a desired name for a 
-#'   condition, e.g. DMSO, and all subsequent values are column names of the technical 
-#'   replicates for that condition. All technical replicates specified must have been passed 
-#'   to \code{retrieve_guides_by_gene} or \code{retrieve_guides_by_label} 
-#'   in the guide_cols argument. For example, 
-#'   \code{c("DMSO", "DMSO_T15A", "DMSO_T15B", "DMSO_T15C")}. 
+#' @param screen_names A list of screen names scored in \code{score_combn_vs_single}
+#'   for which to call significant effects.
 #' @param fdr_threshold Threshold below which to call gene effects as significant 
 #'   (default 0.1).
 #' @param differential_threshold Absolute value threshold on differential effects, 
@@ -609,16 +591,15 @@ call_significant_response <- function(scores, control_cols, ...,
 #' @return Dataframe of scored data with differential effects called as significant
 #'   for the specified conditions. 
 #' @export
-call_significant_response_combn <- function(scores, ...,
+call_significant_response_combn <- function(scores, screen_names,
                                             fdr_threshold = 0.1, differential_threshold = 0,
                                             neg_type = "Negative", pos_type = "Positive") {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
   condition_cols <- list()
-  for (condition in list(...)) {
-    name <- condition[1]
-    condition_names <- c(condition_names, name)
+  for (condition in screen_names) {
+    condition_names <- c(condition_names, condition)
   }
   
   # Calls significant differences for dual-targeting vs. single-targeting null model

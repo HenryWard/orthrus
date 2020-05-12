@@ -6,7 +6,7 @@
 \usage{
 call_significant_response_combn(
   scores,
-  ...,
+  screen_names,
   fdr_threshold = 0.1,
   differential_threshold = 0,
   neg_type = "Negative",
@@ -16,12 +16,8 @@ call_significant_response_combn(
 \arguments{
 \item{scores}{Dataframe returned from \code{score_combn_vs_single}.}
 
-\item{...}{Any number of lists formatted where the first entry is a desired name for a 
-condition, e.g. DMSO, and all subsequent values are column names of the technical 
-replicates for that condition. All technical replicates specified must have been passed 
-to \code{retrieve_guides_by_gene} or \code{retrieve_guides_by_label} 
-in the guide_cols argument. For example, 
-\code{c("DMSO", "DMSO_T15A", "DMSO_T15B", "DMSO_T15C")}.}
+\item{screen_names}{A list of screen names scored in \code{score_combn_vs_single}
+for which to call significant effects.}
 
 \item{fdr_threshold}{Threshold below which to call gene effects as significant 
 (default 0.1).}

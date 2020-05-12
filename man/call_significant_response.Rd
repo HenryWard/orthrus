@@ -6,8 +6,8 @@
 \usage{
 call_significant_response(
   scores,
-  control_cols,
-  ...,
+  control_screen_name,
+  condition_screen_names,
   fdr_threshold = 0.1,
   differential_threshold = 0,
   neg_type = "Negative",
@@ -17,12 +17,10 @@ call_significant_response(
 \arguments{
 \item{scores}{Dataframe returned from \code{score_conditions_vs_control}.}
 
-\item{control_cols}{A list where the first entry is a desired name for a condition, 
-e.g. DMSO, and all subsequent values are column names of the technical replicates 
-for that condition. See documentation for \code{score_conditions_vs_control}.}
+\item{control_screen_name}{Name of a control screen to test condition screens against.}
 
-\item{...}{Any number of conditions to score against the specified control, passed 
-in as separate lists formatted the same as control_cols.}
+\item{condition_screen_names}{A list of condition screen names to score against the 
+control screen.}
 
 \item{fdr_threshold}{Threshold below which to call gene effects as significant 
 (default 0.1).}
