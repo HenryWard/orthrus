@@ -17,6 +17,8 @@
 #' @param control_screen_name Name of a control screen to test condition screens against.
 #' @param condition_screen_names A list of condition screen names to score against the 
 #'   control screen.
+#' @param orientation If true, then guide values are scored separately across each 
+#'   orientation (default FALSE).
 #' @param min_guides The minimum number of guides per gene pair required to score data 
 #'   (default 3).
 #' @param test Type of hypothesis testing to run. Must be one of "rank-sum" for Wilcoxon
@@ -27,16 +29,40 @@
 #'   and condition names.
 #' @export
 score_conditions_vs_control <- function(guides, screens, control_screen_name, condition_screen_names, 
-                                        min_guides = 3, test = "moderated-t", loess = TRUE) {
+                                        orientation = FALSE, min_guides = 3, test = "moderated-t", 
+                                        loess = TRUE) {
+  
+  # Runs separately on each orientation if specified
+  results1 <- NULL
+  results2 <- NULL
+  if (!orientation) {
+    results <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
+                                                 min_guides = 3, test = "moderated-t", loess = TRUE)
+    return(results)
+  } else {
+    results1 <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
+                                                  min_guides = 3, test = "moderated-t", loess = TRUE,
+                                                  screen_prefix = "orient1_")
+    results2 <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
+                                                  min_guides = 3, test = "moderated-t", loess = TRUE,
+                                                  screen_prefix = "orient2_")
+    return(list(results1, results2))
+  }
+}
+
+# Inner function for the above
+score_conditions_vs_control_inner <- function(guides, screens, control_screen_name, condition_screen_names, 
+                                              min_guides = 3, test = "moderated-t", 
+                                              loess = TRUE, screen_prefix = "") {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_screen_name
-  control_cols <- screens[[control_name]][["replicates"]]
+  control_cols <- paste0(screen_prefix, screens[[control_name]][["replicates"]])
   condition_names <- c()
   condition_cols <- list()
   for (condition in condition_screen_names) {
     condition_names <- c(condition_names, condition)
-    condition_cols[[condition]] <- screens[[condition]][["replicates"]]
+    condition_cols[[condition]] <- paste0(screen_prefix, screens[[condition]][["replicates"]])
   }
   
   # Makes output dataframe
@@ -96,6 +122,11 @@ score_conditions_vs_control <- function(guides, screens, control_screen_name, co
     scores$gene1[i] <- guide_vals$gene1
     scores$gene2[i] <- guide_vals$gene2
     rep_mean_control <- rowMeans(data.frame(guide_vals[control_cols]))
+    
+    # Skips if too few guides
+    if (length(rep_mean_control) < min_guides) {
+      next
+    }
     
     # Makes loess-normalized residual dataframe if necessary
     ind <- counter:(counter + length(rep_mean_control) - 1)

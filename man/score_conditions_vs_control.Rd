@@ -9,6 +9,7 @@ score_conditions_vs_control(
   screens,
   control_screen_name,
   condition_screen_names,
+  orientation = FALSE,
   min_guides = 3,
   test = "moderated-t",
   loess = TRUE
@@ -24,6 +25,9 @@ from an entry of \code{split_guides_by_type}.}
 
 \item{condition_screen_names}{A list of condition screen names to score against the 
 control screen.}
+
+\item{orientation}{If true, then guide values are scored separately across each 
+orientation (default FALSE).}
 
 \item{min_guides}{The minimum number of guides per gene pair required to score data 
 (default 3).}

@@ -118,13 +118,21 @@ The final set of QC plots that we need to make consists of scatterplot compariso
 plot_screen_reads(df, screens, qc_folder)
 ```
 
-Before we can parse the data into a structure more suitable for scoring, we need to ensure that we use a common symbol for intergenic regions in both of the gene name columns. In this dataset, intergenic regions are denoted by the symbol "---", which we will change to "None".
+Before we can parse the data into a structure more suitable for scoring, we need to ensure that we differentiate gene pairs for intergenic-targeting guides from gene pairs where both guides target the same gene. Not all libraries will require this step, but for our library it's necessary. Intergenic regions are wrongly denoted for exonic-exonic dual-targeting guides by the symbol "---", which we will change to "None".
 
 ```{r}
-ind <- df$Gene.symbol1 == "---"
-if (sum(ind)) { df$Gene.symbol1[ind] <- "None" }
-ind <- df$Gene.symbol2 == "---"
-if (sum(ind)) { df$Gene.symbol2[ind] <- "None" }
+# Converts exonic-exonic pairs to more accurate names. Genes with "---" target intergenic regions, 
+# and genes with "None" target nothing
+ind <- (df$Cas9.Guide.Type == "exonic" & df$Cpf1.Guide.Type == "exonic") &
+  (df$Gene.symbol1 == "---" | df$Gene.symbol2 == "---")
+temp <- df$Gene.symbol1 == "---" & ind
+if (sum(temp)) {
+  df$Gene.symbol1[temp] <- "None"
+}
+temp <- df$Gene.symbol2 == "---" & ind
+if (sum(temp)) {
+  df$Gene.symbol2[temp] <- "None"
+}
 ```
 
 The last thing we need to do before scoring data is parse it into a different structure and split guides by their type. The reason we do this involves the core assumption that orientation (whether Cas9 targets gene A and Cas12a targets gene B, or vice versa) matters for scoring CHyMErA data. Because of this, to make scoring easier for all gene pairs we want to group their guides across each orientation together into a single list ordered by guide IDs. To parse this data, we call the following functions in order:
