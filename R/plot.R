@@ -133,33 +133,41 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
 #' @param condition_name Name of condition passed to \code{call_significant_response}.
 #' @param loess If true and data was loess-normalized, plots loess null model instead
 #'   (default TRUE).
+#' @param neg_type Label for significant effects with a negative differential effect
+#'   passed to \code{call_significant_response} (default "Negative").
+#' @param pos_type Label for significant effects with a positive differential effect
+#'   passed to \code{call_significant_response} (default "Positive").
 #' @return A ggplot object.
 #' @export
 plot_significant_response <- function(scores, control_name, condition_name,
-                                      loess = TRUE) {
+                                      loess = TRUE, neg_type = "Negative", pos_type = "Positive") {
   
   # Manually sets colors for plot
+  scores <- scores[order(scores[[paste0("differential_", condition_name, "_vs_", control_name)]]),]
   colors <- c("Black", "Gray", "Black")
   fill <- c("Blue", "Gray", "Yellow")
-  condition_response_col <- paste0("effect_type_", condition_name)
-  neg_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] < 0 & 
-    scores[[condition_response_col]] != "None"
-  pos_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] > 0 & 
-    scores[[condition_response_col]] != "None"
+  response_col <- paste0("effect_type_", condition_name)
+  neg_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] < 0 &
+    scores[[response_col]] != "None"
+  pos_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] > 0 &
+    scores[[response_col]] != "None"
   if (any(neg_ind) & !any(pos_ind)) {
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None"))
     colors <- c("Blue", "Gray")
     fill <- c("Black", "Gray")
   } else if (!any(neg_ind) & any(pos_ind)) {
-    colors <- c("Gray", "Yellow")
-    fill <- c("Gray", "Black")
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None", pos_type))
+    colors <- c("Gray", "Black")
+    fill <- c("Gray", "Yellow")
   } else if (!any(neg_ind) & !(any(pos_ind))) {
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None"))
     colors <- c("Gray")
     fill <- c("Gray")
+  } else {
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None", pos_type))
   }
 
   # Builds basic plot
-  response_col <- paste0("effect_type_", condition_name)
-  scores <- scores[order(scores[[paste0("differential_", condition_name, "_vs_", control_name)]]),]
   p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_", control_name), 
                                           y = paste0("mean_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
@@ -195,51 +203,60 @@ plot_significant_response <- function(scores, control_name, condition_name,
 #' effects). Assumes that data was scored by \code{score_combn_vs_single} and 
 #' significant effects were called by \code{call_significant_response_combn}.
 #' 
-#' @param scores Dataframe of scores returned from \code{call_significant_response_dual}.
-#' @param condition_name Name of condition passed to \code{call_significant_response_dual}.
+#' @param scores Dataframe of scores returned from \code{call_significant_response_combn}.
+#' @param condition_name Name of condition passed to \code{call_significant_response_combn}.
 #' @param filter_names If a list of column names is given, calls points as non-significant 
 #'   if they are significant in the provided columsn (e.g. to remove points significant 
 #'   in control screens; default NULL).
 #' @param loess If true and data was loess-normalized, plots loess null model instead
 #'   (default TRUE).
+#' @param neg_type Label for significant effects with a negative differential effect
+#'   passed to \code{call_significant_response_combn} (default "Negative").
+#' @param pos_type Label for significant effects with a positive differential effect
+#'   passed to \code{call_significant_response_combn} (default "Positive").
 #' @return A ggplot object.
 #' @export
 plot_significant_response_combn <- function(scores, condition_name, filter_names = NULL, 
-                                            loess = TRUE) {
+                                            loess = TRUE, neg_type = "Negative", pos_type = "Positive") {
   
   # If filter_names given, remove significant guides with the same effect as a control 
   # type of guides (e.g. DMSO) from plot
-  condition_response_col <- paste0("effect_type_", condition_name)
+  response_col <- paste0("effect_type_", condition_name)
   if (!is.null(filter_names)) {
     for (name in filter_names) {
       control_response_col <- paste0("effect_type_", name)
-      scores[[condition_response_col]][
-        scores[[condition_response_col]] != "None" & 
-          scores[[control_response_col]] == scores[[condition_response_col]]] <-
+      scores[[response_col]][
+        scores[[response_col]] != "None" & 
+          scores[[control_response_col]] == scores[[response_col]]] <-
         "None"
     }
   }
   
   # Manually sets colors for plot
+  scores <- scores[order(scores[[paste0("differential_combn_vs_single_", condition_name)]]),]
   colors <- c("Black", "Gray", "Black")
   fill <- c("Blue", "Gray", "Yellow")
-  neg_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] < 0 & 
-    scores[[condition_response_col]] != "None"
-  pos_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] > 0 & 
-    scores[[condition_response_col]] != "None"
+  neg_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] < 0 &
+    scores[[response_col]] != "None"
+  pos_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] > 0 &
+    scores[[response_col]] != "None"
   if (any(neg_ind) & !any(pos_ind)) {
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None"))
     colors <- c("Blue", "Gray")
     fill <- c("Black", "Gray")
   } else if (!any(neg_ind) & any(pos_ind)) {
-    colors <- c("Gray", "Yellow")
-    fill <- c("Gray", "Black")
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None", pos_type))
+    colors <- c("Gray", "Black")
+    fill <- c("Gray", "Yellow")
   } else if (!any(neg_ind) & !(any(pos_ind))) {
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None"))
     colors <- c("Gray")
     fill <- c("Gray")
+  } else {
+    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None", pos_type))
   }
   
   # Plots data
-  scores <- scores[order(scores[[paste0("differential_combn_vs_single_", condition_name)]]),]
   p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_single_", condition_name), 
                                           y = paste0("mean_combn_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
@@ -254,7 +271,7 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
   
   # Finishes plot
   p <- p +
-    ggplot2::geom_point(aes_string(color = condition_response_col, fill = condition_response_col), shape = 21, alpha = 0.7) +
+    ggplot2::geom_point(aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +
     ggplot2::xlab(paste0(condition_name, " mean expected single-targeted log FC")) +

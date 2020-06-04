@@ -24,7 +24,7 @@ This document will guide you through the complete process of scoring a published
 
 The guide library used to generate this data contains several different types of guides. For this vignette, we will be interested inscoring guides that target the same gene twice ("dual-targeting" guides) and guides that target each gene of a paralogous gene pair separately ("paralog" guides). Additionally, scoring the paralog guides requires comparisons against a third set of guides that target a gene's exonic region in addition to a relatively distant intergenic region ("single-targeting" guides).
 
-In-depth descriptions of this dataset and how it was originally scored are available in [Gonatopoulos-Pournatzis et al.](https://www.nature.com/articles/s41587-020-0437-z).
+In-depth descriptions of this dataset and how it was originally scored are available in [Gonatopoulos-Pournatzis et al.](https://www.nature.com/articles/s41587-020-0437-z)
 
 ### Important publications
 
@@ -33,6 +33,7 @@ Please refer to the following publications for more information on the CHyMErA e
 [Gonatopoulos-Pournatzis et al.](https://www.nature.com/articles/s41587-020-0437-z)
 
 max's scoring paper
+
 flex
 
 gemini for an alternative scoring approach?
@@ -182,13 +183,13 @@ dual_scores2 <- call_significant_response(dual_scores2, "HAP1_T18", "Torin_T18",
                                           fdr_threshold = 0.1, differential_threshold = 0.5)
 ```
 
-Finally, to finish scoring this data we will generate pretty plots describing differential effects and save both those and the scored data to file. Since these plotting functions only return one plot, they return a ggplot object instead of directly saving to file.
+Finally, to finish scoring this data we will generate pretty plots describing differential effects and save both those and the scored data to file. Since these plotting functions only return one plot, they return a ggplot object instead of directly saving to file. Since we renamed the negative and positive effect type labels above, we have to pass our custom labels into the plotting function as well.
 
 ```{r}
 # Plots drug response
-p <- plot_significant_response(dual_scores1, "HAP1_T12", "Torin_T12")
+p <- plot_significant_response(dual_scores1, "HAP1_T12", "Torin_T12", neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "torin_vs_hap1_t12.png"), width = 10, height = 7, dpi = 300)
-p <- plot_significant_response(dual_scores2, "HAP1_T18", "Torin_T18")
+p <- plot_significant_response(dual_scores2, "HAP1_T18", "Torin_T18", neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "torin_vs_hap1_t18.png"), width = 10, height = 7, dpi = 300)
 
 # Writes data to file
@@ -221,22 +222,22 @@ paralog_scores <- call_significant_response_combn(paralog_scores, screens_to_sco
 We then make output plots for all screens.
 
 ```{r}
-p <- plot_significant_response_combn(paralog_scores, "HAP1_T12", loess = TRUE)
+p <- plot_significant_response_combn(paralog_scores, "HAP1_T12", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "paralog_hap1_t12.png"), width = 10, height = 7, dpi = 300)
-p <- plot_significant_response_combn(paralog_scores, "HAP1_T18", loess = TRUE)
+p <- plot_significant_response_combn(paralog_scores, "HAP1_T18", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "paralog_hap1_t18.png"), width = 10, height = 7, dpi = 300)
-p <- plot_significant_response_combn(paralog_scores, "RPE1_T18", loess = TRUE)
+p <- plot_significant_response_combn(paralog_scores, "RPE1_T18", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "paralog_rpe1_t18.png"), width = 10, height = 7, dpi = 300)
-p <- plot_significant_response_combn(paralog_scores, "RPE1_T24", loess = TRUE)
+p <- plot_significant_response_combn(paralog_scores, "RPE1_T24", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "paralog_rpe1_t24.png"), width = 10, height = 7, dpi = 300)
 ```
 
 Even though paralog data is not scored against a control, we still want to compare treated screens against untreated screens in some way. To do that visually, we will also make plots that exclude hits which are significant in a given list of control screens. 
 
 ```{r}
-p <- plot_significant_response_combn(paralog_scores, "Torin_T12", filter_name = "HAP1_T12", loess = TRUE)
+p <- plot_significant_response_combn(paralog_scores, "Torin_T12", filter_name = "HAP1_T12", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "paralog_torin_t12.png"), width = 10, height = 7, dpi = 300)
-p <- plot_significant_response_combn(paralog_scores, "Torin_T18", filter_name = "HAP1_T18", loess = TRUE)
+p <- plot_significant_response_combn(paralog_scores, "Torin_T18", filter_name = "HAP1_T18", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
 ggsave(file.path(output_folder, "paralog_torin_t18.png"), width = 10, height = 7, dpi = 300)
 ```
 
