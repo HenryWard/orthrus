@@ -24,27 +24,33 @@
 #' @param test Type of hypothesis testing to run. Must be one of "rank-sum" for Wilcoxon
 #'   rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t").
 #' @param loess If true, loess-normalizes residuals before running hypothesis testing.
-#'   Only works when test = "moderated-t" (default TRUE). 
+#'   Only works when test = "moderated-t" (default TRUE).
+#' @param return_residuals If true, additionally returns residuals dataframe (default FALSE). 
+#' @param verbose If true, prints verbose output (default FALSE). 
 #' @return A dataframe of scored data with separate columns given by the specified control
-#'   and condition names.
+#'   and condition names. If return_residuals is true, instead returns a list where the
+#'   first element is the scored data and the second is the residuals dataframe. 
 #' @export
 score_conditions_vs_control <- function(guides, screens, control_screen_name, condition_screen_names, 
                                         orientation = FALSE, min_guides = 3, test = "moderated-t", 
-                                        loess = TRUE) {
+                                        loess = TRUE, return_residuals = FALSE, verbose = FALSE) {
   
   # Runs separately on each orientation if specified
   results1 <- NULL
   results2 <- NULL
   if (!orientation) {
     results <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
-                                                 min_guides = 3, test = "moderated-t", loess = TRUE)
+                                                 min_guides = min_guides, test = test, loess = loess,
+                                                 return_residuals = return_residuals, verbose = verbose)
     return(results)
   } else {
     results1 <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
-                                                  min_guides = 3, test = "moderated-t", loess = TRUE,
+                                                  min_guides = min_guides, test = test, loess = loess,
+                                                  return_residuals = return_residuals, verbose = verbose,
                                                   screen_prefix = "orient1_")
     results2 <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
-                                                  min_guides = 3, test = "moderated-t", loess = TRUE,
+                                                  min_guides = min_guides, test = test, loess = loess,
+                                                  return_residuals = return_residuals, verbose = verbose,
                                                   screen_prefix = "orient2_")
     return(list(results1, results2))
   }
@@ -53,7 +59,8 @@ score_conditions_vs_control <- function(guides, screens, control_screen_name, co
 # Inner function for the above
 score_conditions_vs_control_inner <- function(guides, screens, control_screen_name, condition_screen_names, 
                                               min_guides = 3, test = "moderated-t", 
-                                              loess = TRUE, screen_prefix = "") {
+                                              loess = TRUE, screen_prefix = "",
+                                              return_residuals = FALSE, verbose = FALSE) {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_screen_name
@@ -209,7 +216,11 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   scores <- scores[scores[[paste0("n_", control_name)]] >= min_guides,]
   
   # Explicitly returns scored data
-  return(scores)
+  if (return_residuals) {
+    return(list(scores, loess_residuals))
+  } else {
+    return(scores)
+  }
 }
 
 #' Scores conditions against a single control.
@@ -231,17 +242,20 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
 #'   single-gene effects.
 #' @param test Type of hypothesis testing to run. Must be one of "rank-sum" for Wilcoxon
 #'   rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t").
-#' @param loess If true, loess-normalizes residuals before running hypothesis testing.
-#'   Only works when test = "moderated-t" (default TRUE). 
 #' @param min_guides The minimum number of guides per gene pair required to score data 
 #'   (default 3).
+#' @param loess If true, loess-normalizes residuals before running hypothesis testing.
+#'   Only works when test = "moderated-t" (default TRUE). 
+#' @param return_residuals If true, additionally returns residuals dataframe. 
 #' @param verbose If true, prints verbose output (default FALSE). 
 #' @return A dataframe of scored data with separate columns given by the specified control
-#'   and condition names.
+#'   and condition names. If return_residuals is true, instead returns a list where the
+#'   first element is the scored data and the second is the residuals dataframe.
 #' @export
 score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_names, 
                                   min_guides = 3, test = "moderated-t",
-                                  loess = TRUE, verbose = FALSE) {
+                                  loess = TRUE, return_residuals = FALSE,
+                                  verbose = FALSE) {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
@@ -546,8 +560,12 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = "BH")
   }
   
-  # Explicitly returns scoresd data
-  return(scores)
+  # Explicitly returns scored data
+  if (return_residuals) {
+    return(list(scores, loess_residuals))
+  } else {
+    return(scores)
+  }
 }
 
 #' Call significant responses for scored data.

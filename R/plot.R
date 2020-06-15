@@ -284,3 +284,57 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
                    legend.text = element_text(size = 16))
   return(p)
 }
+
+#' Plot LFCs for all gene pairs.
+#' 
+#' Plots replicate comparisons for all replicates in a list of screens and outputs
+#' plots to a given folder.
+#' 
+#' @param scores Dataframe of scores returned from \code{call_significant_response}.
+#' @param residuals Residuals returned with the return_residuals argument set to true
+#'   from \code{call_significant_response}.
+#' @param control_name Name of control passed to \code{call_significant_response}.
+#' @param condition_name Name of condition passed to \code{call_significant_response}.
+#' @param output_folder Folder to output plots to. 
+#' @export 
+plot_lfc <- function(scores, residuals, control_name, condition_name, output_folder) {
+  
+  # Gets top hits
+  response_col <- paste0("effect_type_", condition_name)
+  control_col <- paste0("mean_", control_name)
+  condition_col <- paste0("mean_", condition_name)
+  scores <- scores[scores[[response_col]] != "None",]
+  residuals <- residuals[residuals$n %in% as.numeric(rownames(scores)),]
+  residuals$lfc <- residuals[[condition_col]] - residuals[[control_col]]
+  
+  # Makes LFC plots for all top hits
+  for (i in unique(residuals$n)) {
+    
+    # Gets data and gene names
+    df <- residuals[residuals$n == i,]
+    ind <- which(as.numeric(rownames(scores)) == i)
+    gene1 <- scores$gene1[ind]
+    gene2 <- scores$gene2[ind]
+    x_label <- paste0("Guides")
+    y_label <- paste0("Average LFC across replicates")
+    
+    # ADds ID column for plotting
+    df$ID <- paste("Guide", 1:nrow(df))
+    
+    # Plots data
+    p <- ggplot2::ggplot(df) +
+      ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
+      ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
+      ggplot2::xlab(x_label) +
+      ggplot2::ylab(y_label) +
+      ggplot2::geom_bar(aes(x = ID, y = lfc), stat = "identity", color = "Black", fill = alpha(c("gray30"), .9)) +
+      ggplot2::coord_flip() +
+      ggthemes::theme_tufte(base_size = 20)
+    
+    # Saves to file
+    file_name <- paste0(gene1, "_", gene2, "_lfc.png")
+    ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+  }
+}
+
+

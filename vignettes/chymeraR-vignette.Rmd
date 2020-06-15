@@ -69,8 +69,10 @@ df <- chymera_paralog
 # Makes output folders if nonexistent
 output_folder <- file.path("output", "vignette")
 qc_folder <- file.path(output_folder, "qc")
+lfc_folder <- file.path(qc_folder, "lfc_plots")
 if (!dir.exists(output_folder)) { dir.create(output_folder, recursive = TRUE) }
 if (!dir.exists(qc_folder)) { dir.create(qc_folder) }
+if (!dir.exists(lfc_folder)) { dir.create(lfc_folder) }
 ```
 
 We need to put together a list of screens so that the rest of the pipeline knows which technical replicates belong to which screen. To do this, we call the `add_screen` function. This requires you to give each screen a name - for instance, HAP1_T12 - and a list of column names in the dataset of interest that belong to the screen. We first want to list names for our T0 screens, which have no technical replicates. For subsequent calls to `add_screen`, we can pass previous results in as the first argument to build up the list of screens, and will no longer have to call parameters by name.
@@ -199,6 +201,27 @@ write.table(dual_scores2, file.path(output_folder, "dual_targeted_gene_calls_t18
             row.names = FALSE, col.names = TRUE, quote = FALSE)
 ```
 
+### Options for dual-targeted scoring
+
+Dual-targeting scoring can optionally output a residual dataframe of fold-change values per gene-pair, which we can use to visually inspect the quality of top hits. This is returned as the second element in an output list from `score_conditions_vs_control` with `return_residuals=TRUE`, where the first element is the scored data as before. 
+
+```{r}
+# Scores data and calls significant hits
+temp <- score_conditions_vs_control(dual, screens, "HAP1_T18", "Torin_T18", 
+                                    test = "moderated-t", loess = TRUE,
+                                    return_residuals = TRUE)
+dual_scores2 <- temp[[1]]
+residuals <- temp[[2]]
+dual_scores2 <- call_significant_response(dual_scores, "HAP1_T18", "Torin_T18",
+                                          neg_type = "Sensitizer", pos_type = "Suppressor",
+                                          differential_threshold = 0.5)
+
+# Makes LFC plots for all top hits
+plot_lfc(dual_scores2, residuals, "HAP1_T18", "Torin_T18", lfc_folder)
+```
+
+This alternate way to call `score_conditions_vs_control` makes plots of LFCs for each significant hit and outputs them to a target folder.
+
 ### Paralog scoring
 
 Scoring paralog data is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to **score data against a derived null model.** 
@@ -247,6 +270,30 @@ Finally, we save our scored data to file.
 write.table(paralog_scores, file.path(output_folder, "paralog_gene_calls.tsv"), sep = "\t",
             row.names = FALSE, col.names = TRUE, quote = FALSE)
 ```
+
+### Single-targeted scoring
+
+ChymeraR also provides a way to score the effect of single-targeted genes (for exonic-intergenic guides that also comprise the null model for combinatorial scoring). Conceptually, this scoring method is the same as the condition vs. control comparison for dual-targeted guides, but is run separately on each orientation. In other words, for our example dataset we can also score conditions vs. controls for Cas9 guides separately from Cas12a guides. The interface to this the same as for dual-targeted scoring, but we provide an additional flag to tell ChymeraR to score orientations separately: `orientation=TRUE`. We also pass in the single-targeting guides and not the dual-targeting guides.
+
+The main difference between the output of this call to `score_conditions_vs_control` and the previous ones is the function now returns a list of scored dataframes, one for each orientation. In this dataset, the first element of that list, `single_scores[[1]]`, contains Cas9 effects and the second, `single_scores[[2]]`, contains Cas12a effects. 
+
+```{r}
+single_scores <- score_conditions_vs_control(single, screens, "HAP1_T18", c("Torin_T18"), 
+                                             orientation = TRUE)
+
+# Only keeps scores from Cas12a guides 
+single_scores <- single_scores[[2]]
+to_keep <- !is.na(single_scores$gene1)
+cat(paste("Removing", nrow(single_scores) - sum(to_keep), "sparse single-targeting genes\n"))
+single_scores <- single_scores[to_keep,]
+
+# Calls significant hits
+single_scores <- call_significant_response(single_scores, "HAP1_T18", c("Torin_T18"),
+                                           neg_type = "Sensitizer", pos_type = "Suppressor",
+                                           fdr_threshold = 0.2, differential_threshold = 0.5)
+```
+
+Because the library design for the published experiment involved only a few Cas9 guides per gene pair, we're only interested in scoring the effect of Cas12a guides. So, we only keep the second scored dataframe and look at those effects downstream, after removing gene pairs with too few remaining guides post-filtering.
 
 ## Miscellaneous
 
