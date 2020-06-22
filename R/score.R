@@ -2,6 +2,11 @@
 # SCORING CODE
 ######
 
+# Inner function to scale values between 0 and 1
+scale_values <- function(x) {
+  val <- (x-min(x, na.rm=T)) / (max(x, na.rm=T) - min(x, na.rm=T))
+}
+
 #' Scores conditions against a single control.
 #' 
 #' Scores guides for any number of condition screens against a control screen
@@ -107,11 +112,15 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   
   # Appends additional columns for each condition
   new_cols <- c(paste0("n_", control_name), 
-                paste0("mean_", control_name))
+                paste0("mean_", control_name),
+                paste0("variance_", control_name))
+                # paste0("hit_quality_", control_name))
   for (name in condition_names) {
     new_cols <- c(new_cols, c(
       paste0("n_", name), 
       paste0("mean_", name),
+      paste0("variance_", name),
+      # paste0("hit_quality_", name),
       paste0("differential_", name, "_vs_", control_name),
       paste0("pval_", name, "_vs_", control_name),
       paste0("fdr_", name, "_vs_", control_name),
@@ -150,6 +159,8 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
       scores[[paste0("n_", name)]][i] <- length(rep_mean_condition)
       scores[[paste0("mean_", control_name)]][i] <- mean(rep_mean_control)
       scores[[paste0("mean_", name)]][i] <- mean(rep_mean_condition)
+      scores[[paste0("variance_", control_name)]][i] <- var(rep_mean_control)
+      scores[[paste0("variance_", name)]][i] <- var(rep_mean_condition)
       scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(diff)
       
       # Appends mean LFCs for loess-normalization if specified
@@ -586,12 +597,15 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
 #'   (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
 #'   (default "Positive").
+#' @param expected_guides Number of guides expected per gene-pair, to more accurately
+#'   assign a hit quality metric (default 15).
 #' @return Dataframe of scored data with differential effects called as significant
 #'   for the specified conditions. 
 #' @export
 call_significant_response <- function(scores, control_screen_name, condition_screen_names,
                                       fdr_threshold = 0.1, differential_threshold = 0,
-                                      neg_type = "Negative", pos_type = "Positive") {
+                                      neg_type = "Negative", pos_type = "Positive",
+                                      expected_guides = 6) {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_screen_name
@@ -615,6 +629,21 @@ call_significant_response <- function(scores, control_screen_name, condition_scr
     scores[[response_col]][sig & diffs < 0 & abs(diffs) > differential_threshold] <- neg_type
     scores[[response_col]][sig & diffs > 0 & abs(diffs) > differential_threshold] <- pos_type
   }
+  
+  # # Computes hit quality for the given gene pair
+  # for (name in condition_names) {
+  #   variance_cond <- scores[[paste0("variance_", name)]]
+  #   variance_cond <- 1 - scale_values(variance_cond)
+  #   variance_cont <- scores[[paste0("variance_", control_name)]]
+  #   variance_cont <- 1 - scale_values(variance_cont)
+  #   #effect <- scores[[paste0("mean_", name)]]
+  #   #effect <- scale_values(abs(effect))
+  #   n_guides <- scores[[paste0("n_", name)]]
+  #   n_guides[n_guides > expected_guides] <- expected_guides
+  #   n_guides <- scale_values(n_guides)
+  #   hit_quality <- rowMeans(data.frame(variance_cond, variance_cont, n_guides), na.rm = TRUE)
+  #   scores[[paste0("hit_quality_", name)]] <- hit_quality
+  # }
   
   # Explicitly returns scored data
   return(scores)

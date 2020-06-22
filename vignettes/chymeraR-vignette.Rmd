@@ -112,13 +112,13 @@ One workhorse function, `normalize_screens`, automatically performs all of these
 This function additionally removes guides that are lowly-expressed or highly-expressed at T0. To set screens to filter by, pass a list of their names to the `filter_names` parameter. For typical experiments we recommend you pass T0 screens to this parameter. To set minimum and maximum read count thresholds for guides in the T0 screens, pass numbers to the `min_reads` (default 30) and `max_reads` (default 10,000) parameters. Guides will not typically exceed the `max_reads` threshold, but if they do, it is likely a red flag for screen quality.
 
 ```{r}
-df <- normalize_screens(df, screens, filter_names = c("HAP1_T0", "RPE1_T0"), min_reads = 20)
+df <- normalize_screens(df, screens, filter_names = c("HAP1_T0", "RPE1_T0"), min_reads = 30)
 ```
 
 The final set of QC plots that we need to make consists of scatterplot comparisons between each pair of technical replicates. To make these, we call `plot_rep_comparisons`. While it is possible and sometimes could be a good idea to make these before computing LFCs, these results tend to be more consistent after computing LFCs due to depth-normalization, so we recommend making them at this point in the pipeline. Although this function also outputs Pearson correlations between all technical replicates, like all QC plots, manual inspection for potential problematic outlier guides or other red flags or is recommended.
 
 ```{r}
-plot_screen_reads(df, screens, qc_folder)
+plot_rep_comparisons(df, screens, qc_folder)
 ```
 
 Before we can parse the data into a structure more suitable for scoring, we need to ensure that we differentiate gene pairs for intergenic-targeting guides from gene pairs where both guides target the same gene. Not all libraries will require this step, but for our library it's necessary. Intergenic regions are wrongly denoted for exonic-exonic dual-targeting guides by the symbol "---", which we will change to "None".
@@ -222,9 +222,9 @@ plot_lfc(dual_scores2, residuals, "HAP1_T18", "Torin_T18", lfc_folder)
 
 This alternate way to call `score_conditions_vs_control` makes plots of LFCs for each significant hit and outputs them to a target folder.
 
-### Paralog scoring
+### Combinatorial scoring
 
-Scoring paralog data is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to **score data against a derived null model.** 
+Scoring combinatorial data for the paralog section of the library is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to **score data against a derived null model.** 
 
 But first, because we aren't interested in scoring the effects of non-targeting guides and because this could potentially drastically slow the scoring process, we will remove non-targeting guides from the data.
 
@@ -270,6 +270,26 @@ Finally, we save our scored data to file.
 write.table(paralog_scores, file.path(output_folder, "paralog_gene_calls.tsv"), sep = "\t",
             row.names = FALSE, col.names = TRUE, quote = FALSE)
 ```
+
+### Options for combinatorial scoring
+
+Like dual-targeting scoring, the combinatorial scoring mode can optionally output a residual dataframe of fold-change values per gene-pair, which we can use to visually inspect the quality of top hits. This is returned as the second element in an output list from `score_conditions_vs_control_combn` with `return_residuals=TRUE`, where the first element is the scored data as before. 
+
+```{r}
+# Scores data and calls significant hits
+screens_to_score <- c("HAP1_T12", "HAP1_T18", "RPE1_T18", "RPE1_T24", "Torin_T12", "Torin_T18")
+paralog_scores <- score_combn_vs_single(paralogs, single, screens, screens_to_score, test = "moderated-t",
+                                        return_residuals = TRUE)
+paralog_scores <- temp[[1]]
+residuals <- temp[[2]]
+paralog_scores <- call_significant_response_combn(paralog_scores, screens_to_score,
+                                                  neg_type = "Negative GI", pos_type = "Positive GI")
+
+# Makes LFC plots for all top hits
+plot_lfc(paralog_scores, residuals, "Torin_T18", lfc_folder)
+```
+
+This alternate way to call `score_conditions_vs_control_combn` makes plots of LFCs for each significant hit and outputs them to a target folder.
 
 ### Single-targeted scoring
 

@@ -12,6 +12,11 @@
 #' @param output_folder Folder to output plots to. 
 #' @export 
 plot_rep_comparisons <- function(df, screens, output_folder) {
+  
+  # Builds dataframe of replicate PCCs
+  pcc_df <- NULL
+  
+  # Compares replicates across all screens
   for (screen in screens) {
     rep_cols <- screen[["replicates"]]
     if (length(rep_cols) > 1) {
@@ -21,17 +26,33 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
         col2 <- pairs[2,i]
         x_label <- paste0(col1, " log fold change")
         y_label <- paste0(col2, " log fold change")
-        p <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE)
+        temp <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE)
+        p <- temp[[1]]
+        pcc <- temp[[2]]
         file_name <- paste0(col1, "_vs_", col2, "_replicate_comparison.png")
         ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+        
+        # Stores PCC in dataframe
+        if (is.null(pcc_df)) {
+          pcc_df <- data.frame(rep1 = col1, rep2 = col2, pcc = pcc,
+                               stringsAsFactors = FALSE)
+        } else {
+          pcc_df <- rbind(pcc_df, c(col1, col2, pcc))
+        }
       }   
     }
   }
+  
+  # Writes PCCs to file
+  pcc_file <- file.path(output_folder, "replicate_pcc.tsv")
+  write.table(pcc_df, pcc_file, quote = FALSE, sep = "\t",
+              row.names = FALSE, col.names = TRUE)
 }
 
 #' Plot read counts for a screen.
 #' 
-#' Plots a histogram of read counts for each replicate of all screens.
+#' Plots a histogram of read counts for each replicate of all screens. Also
+#' plots total reads for all screens.
 #' 
 #' @param df Reads dataframes.
 #' @param screens List of screens created with \code{add_screens}.
@@ -41,13 +62,34 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
 #' @export
 plot_screen_reads <- function(df, screens, output_folder, 
                               log_scale = TRUE, pseudocount = 1) {
+  
+  # Plots read count histograms for all replicates of all screens and stores total reads 
+  reads_df <- NULL
   for (screen in screens) {
     for (col in screen[["replicates"]]) {
+      total_reads <- sum(df[,col], na.rm = TRUE)
+      if (is.null(reads_df)) {
+        reads_df <- data.frame(rep = col, reads = total_reads,
+                               stringsAsFactors = FALSE)
+      } else {
+        reads_df <- rbind(reads_df, c(col, total_reads))
+      }
       p <- plot_reads(df, col, log_scale, pseudocount)
       file_name <- paste0(col, "_raw_reads_histogram.png")
       ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)  
     } 
   }
+  
+  # Plots total reads
+  reads_df$reads <- as.numeric(reads_df$reads)
+  ggplot2::ggplot(reads_df, aes(x = rep, y = reads)) +
+    ggplot2::geom_bar(stat = "identity", color = "Black", fill = "gray30") +
+    ggplot2::xlab("Replicate") +
+    ggplot2::ylab("Total reads") +
+    ggplot2::scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
+    ggthemes::theme_tufte(base_size = 20) +
+    ggplot2::theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  ggplot2::ggsave(file.path(output_folder, "total_reads.png"), width = 10, height = 7, dpi = 300)
 }
 
 #' Plot read counts.
@@ -85,13 +127,14 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
 #' @param color_lab Name of color legend (optional, defaults to color_col).
 #' @param print_cor If true, prints Pearson correlation between columns 
 #'   (default FALSE).
-#' @return A ggplot object.
-#' @export
+#' @return A list of two elements. The first is a ggplot object and the
+#'   second is the correlation between xcol and ycol, if print_cor = TRUE.
 plot_samples <- function(df, xcol, ycol, xlab, ylab, 
                          color_col = NULL, color_lab = NULL,
                          print_cor = FALSE) {
   
   # Optionally prints Pearson correlation between given columns
+  pcc <- NA
   if (print_cor) {
     pcc <- cor(df[[xcol]], df[[ycol]])
     cat(paste("Pearson correlation between", xcol, "and", ycol, ":", pcc, "\n"))
@@ -118,7 +161,7 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
       ggplot2::ylab(ylab) +
       ggthemes::theme_tufte(base_size = 20)
   }
-  return(p)
+  return(list(p, pcc))
 }
 
 #' Plots drug response for scored data.
@@ -288,7 +331,7 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
 #' Plot LFCs for all gene pairs.
 #' 
 #' Plots replicate comparisons for all replicates in a list of screens and outputs
-#' plots to a given folder.
+#' plots to a given folder. Works for data returned from \code{call_significant_response}.
 #' 
 #' @param scores Dataframe of scores returned from \code{call_significant_response}.
 #' @param residuals Residuals returned with the return_residuals argument set to true
@@ -296,16 +339,34 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
 #' @param control_name Name of control passed to \code{call_significant_response}.
 #' @param condition_name Name of condition passed to \code{call_significant_response}.
 #' @param output_folder Folder to output plots to. 
+#' @param neg_type Label for significant effects with a negative differential effect
+#'   passed to \code{call_significant_response} (default "Negative").
+#' @param pos_type Label for significant effects with a positive differential effect
+#'   passed to \code{call_significant_response} (default "Positive").
 #' @export 
-plot_lfc <- function(scores, residuals, control_name, condition_name, output_folder) {
+plot_lfc <- function(scores, residuals, control_name, condition_name, output_folder,
+                     neg_type = "Negative", pos_type = "Positive") {
+  
+  # Makes output folder if it doesn't exist
+  if (!dir.exists(output_folder)) {
+    dir.create(output_folder)
+  }
   
   # Gets top hits
   response_col <- paste0("effect_type_", condition_name)
   control_col <- paste0("mean_", control_name)
   condition_col <- paste0("mean_", condition_name)
+  diff_col <- paste0("differential_", condition_name, "_vs_", control_name)
   scores <- scores[scores[[response_col]] != "None",]
   residuals <- residuals[residuals$n %in% as.numeric(rownames(scores)),]
   residuals$lfc <- residuals[[condition_col]] - residuals[[control_col]]
+  
+  # Gets ranking of top hits
+  neg_order <- order(scores[[diff_col]])
+  scores$neg_rank <- NA
+  scores$pos_rank <- NA
+  scores$neg_rank[neg_order] <- 1:nrow(scores)
+  scores$pos_rank[neg_order] <- nrow(scores):1
   
   # Makes LFC plots for all top hits
   for (i in unique(residuals$n)) {
@@ -318,21 +379,132 @@ plot_lfc <- function(scores, residuals, control_name, condition_name, output_fol
     x_label <- paste0("Guides")
     y_label <- paste0("Average LFC across replicates")
     
-    # ADds ID column for plotting
+    # Adds ID column for plotting
     df$ID <- paste("Guide", 1:nrow(df))
     
     # Plots data
     p <- ggplot2::ggplot(df) +
       ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
+      ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
       ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::xlab(x_label) +
       ggplot2::ylab(y_label) +
-      ggplot2::geom_bar(aes(x = ID, y = lfc), stat = "identity", color = "Black", fill = alpha(c("gray30"), .9)) +
+      ggplot2::geom_bar(aes(x = ID, y = lfc), stat = "identity", color = "Black", fill = alpha(c("gray30"), 1)) +
       ggplot2::coord_flip() +
       ggthemes::theme_tufte(base_size = 20)
     
+    # Gets type and rank of effect
+    effect <- ""
+    rank <- 0
+    effect_type <- scores[[response_col]][ind]
+    if (effect_type == neg_type) {
+      effect <- "neg"
+      rank <- scores$neg_rank[ind]
+    } else {
+      effect <- "pos"
+      rank <- scores$pos_rank[ind]
+    }
+    
     # Saves to file
-    file_name <- paste0(gene1, "_", gene2, "_lfc.png")
+    file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".png")
+    ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+  }
+}
+
+#' Plot LFCs for all gene pairs.
+#' 
+#' Plots replicate comparisons for all replicates in a list of screens and outputs
+#' plots to a given folder. Works for data returned from \code{call_significant_response_combn}.
+#' 
+#' @param scores Dataframe of scores returned from \code{call_significant_response_combn}.
+#' @param residuals Residuals returned with the return_residuals argument set to true
+#'   from \code{call_significant_response_combn}.
+#' @param condition_name Name of condition passed to \code{call_significant_response_combn}.
+#' @param output_folder Folder to output plots to. 
+#' @param neg_type Label for significant effects with a negative differential effect
+#'   passed to \code{call_significant_response_combn} (default "Negative").
+#' @param pos_type Label for significant effects with a positive differential effect
+#'   passed to \code{call_significant_response_combn} (default "Positive").
+#' @export 
+plot_lfc_combn <- function(scores, residuals, condition_name, output_folder,
+                           neg_type = "Negative", pos_type = "Positive") {
+  
+  # Makes output folder if it doesn't exist
+  if (!dir.exists(output_folder)) {
+    dir.create(output_folder)
+  }
+  
+  # Gets top hits across both orientations
+  response_col <- paste0("effect_type_", condition_name)
+  single_col <- paste0("mean_single_", condition_name)
+  combn_col <- paste0("mean_combn_", condition_name)
+  diff_col <- paste0("differential_combn_vs_single_", condition_name)
+  scores <- scores[scores[[response_col]] != "None",]
+  residuals1 <- residuals[[1]]
+  residuals2 <- residuals[[2]]
+  residuals1 <- residuals1[residuals1$n %in% as.numeric(rownames(scores)),]
+  residuals2 <- residuals2[residuals2$n %in% as.numeric(rownames(scores)),]
+  residuals1$lfc <- residuals1[[combn_col]] - residuals1[[single_col]]
+  residuals2$lfc <- residuals2[[combn_col]] - residuals2[[single_col]]
+  residuals1$orientation <- "Orientation 1"
+  residuals2$orientation <- "Orientation 2"
+  
+  # Gets ranking of top hits
+  neg_order <- order(scores[[diff_col]])
+  scores$neg_rank <- NA
+  scores$pos_rank <- NA
+  scores$neg_rank[neg_order] <- 1:nrow(scores)
+  scores$pos_rank[neg_order] <- nrow(scores):1
+  
+  # Makes LFC plots for all top hits
+  for (i in unique(residuals1$n)) {
+    
+    # Gets data
+    df1 <- residuals1[residuals1$n == i,]
+    df2 <- residuals2[residuals2$n == i,]
+    df1$orientation <- paste0(df1$orientation[1], " (n = ", nrow(df1), ")")
+    df2$orientation <- paste0(df2$orientation[1], " (n = ", nrow(df2), ")")
+    df <- rbind(df1, df2)
+    
+    # Gets gene names and sets axis labels
+    ind <- which(as.numeric(rownames(scores)) == i)
+    gene1 <- scores$gene1[ind]
+    gene2 <- scores$gene2[ind]
+    x_label <- paste0("Guides")
+    y_label <- paste0("Average LFC across replicates")
+    
+    # Adds ID column for plotting
+    df$ID <- nrow(df):1
+    
+    # Plots data
+    p <- ggplot2::ggplot(df) +
+      ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
+      ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
+      ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
+      ggplot2::xlab(x_label) +
+      ggplot2::ylab(y_label) +
+      ggplot2::geom_bar(aes(x = ID, y = lfc), stat = "identity", color = "Black", fill = alpha(c("gray30"), 1)) +
+      ggplot2::coord_flip() +
+      ggplot2::facet_grid(. ~ orientation) +
+      ggthemes::theme_tufte(base_size = 20) +
+      ggplot2::theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     panel.border = element_rect(fill = NA, color = "black"))
+    
+    # Gets type and rank of effect
+    effect <- ""
+    rank <- 0
+    effect_type <- scores[[response_col]][ind]
+    if (effect_type == neg_type) {
+      effect <- "neg"
+      rank <- scores$neg_rank[ind]
+    } else {
+      effect <- "pos"
+      rank <- scores$pos_rank[ind]
+    }
+      
+    # Saves to file
+    file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".png")
     ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
   }
 }
