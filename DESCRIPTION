@@ -1,16 +1,18 @@
-Package: chymera
+Package: chymeraR
 Title: Scoring Combinatorial CRISPR Screens
-Version: 0.1
+Version: 0.1.3
 Authors@R: person("Henry", "Ward", email = "henry.neil.ward@gmail.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Description: Package for processing, scoring and analyzing combinatorial CRISPR screens.
 Depends: R (>= 3.5.1)
 License: MIT
 Encoding: UTF-8
 LazyData: true
 Imports:
-    ggplot2,
+  ggplot2,
 	ggthemes,
-	limma
+	limma,
+	pheatmap,
+	RColorBrewer
 RoxygenNote: 7.1.0
 Suggests: 
     knitr,

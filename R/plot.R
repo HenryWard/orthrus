@@ -65,7 +65,12 @@ plot_screen_reads <- function(df, screens, output_folder,
   
   # Plots read count histograms for all replicates of all screens and stores total reads 
   reads_df <- NULL
-  for (screen in screens) {
+  all_cols <- c()
+  col_groups <- c()
+  all_coverage <- c()
+  i <- 1
+  for (screen_name in names(screens)) {
+    screen <- screens[[screen_name]]
     for (col in screen[["replicates"]]) {
       total_reads <- sum(df[,col], na.rm = TRUE)
       if (is.null(reads_df)) {
@@ -74,22 +79,67 @@ plot_screen_reads <- function(df, screens, output_folder,
       } else {
         reads_df <- rbind(reads_df, c(col, total_reads))
       }
+      all_coverage <- c(all_coverage, screen[["target_coverage"]])
+      all_cols <- c(all_cols, col)
       p <- plot_reads(df, col, log_scale, pseudocount)
       file_name <- paste0(col, "_raw_reads_histogram.png")
       ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)  
-    } 
+      col_groups[i] <- screen_name
+      i <- i + 1
+    }
   }
+  
+  # Gets unique coverage breakpoints
+  all_coverage <- unique(all_coverage)
+  all_coverage <- all_coverage*nrow(df)
   
   # Plots total reads
   reads_df$reads <- as.numeric(reads_df$reads)
-  ggplot2::ggplot(reads_df, aes(x = rep, y = reads)) +
-    ggplot2::geom_bar(stat = "identity", color = "Black", fill = "gray30") +
+  p <- ggplot2::ggplot(reads_df, aes(x = rep, y = reads)) +
+    ggplot2::geom_bar(stat = "identity", color = "Black", fill = "gray30")
+  for (coverage in all_coverage) {
+    p <- p + ggplot2::geom_hline(yintercept = coverage, linetype = 2, size = 1, alpha = 0.9, color = "Gray")
+  }
+  p <- p +
     ggplot2::xlab("Replicate") +
     ggplot2::ylab("Total reads") +
     ggplot2::scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
     ggthemes::theme_tufte(base_size = 20) +
     ggplot2::theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  ggplot2::ggsave(file.path(output_folder, "total_reads.png"), width = 10, height = 7, dpi = 300)
+  ggplot2::ggsave(file.path(output_folder, "total_reads.png"), plot = p, width = 10, height = 7, dpi = 300)
+  
+  # Gets colors for different screens
+  screen_colors <- list(group = RColorBrewer::brewer.pal(length(unique(col_groups)), "Set1"))
+  names(screen_colors$group) <- unique(col_groups)
+  
+  # Gets PCCs for heatmap
+  df <- df[,all_cols]
+  if (log_scale) {
+    for (col in colnames(df)) {
+      df[,col] <- log2(df[,col] + 1)
+    }
+  }
+  cor_mat <- data.matrix(cor(df))
+  
+  # Gets annotation for heatmap
+  col_groups <- data.frame("Screen" = col_groups)
+  rownames(col_groups) <- colnames(df)
+  colnames(cor_mat) <- colnames(df)
+  
+  # Gets color for heatmap values
+  breaks <- seq(-1, 1, by = (1/150))
+  pal <- colorRampPalette(c("#7fbf7b", "#f7f7f7", "#af8dc3"))(n = length(breaks))
+  
+  # Plots heatmap of raw reads
+  filename <- file.path(output_folder, "screen_heatmap.png")
+  pheatmap::pheatmap(cor_mat,
+                     border_color = NA,
+                     annotation_col = col_groups,
+                     annotation_colors = screen_colors,
+                     display_numbers = TRUE,
+                     color = pal, 
+                     breaks = breaks,
+                     filename = filename)
 }
 
 #' Plot read counts.
