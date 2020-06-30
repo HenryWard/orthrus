@@ -12,7 +12,9 @@ score_conditions_vs_control(
   orientation = FALSE,
   min_guides = 3,
   test = "moderated-t",
-  loess = TRUE
+  loess = TRUE,
+  return_residuals = FALSE,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -37,10 +39,15 @@ rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t"
 
 \item{loess}{If true, loess-normalizes residuals before running hypothesis testing.
 Only works when test = "moderated-t" (default TRUE).}
+
+\item{return_residuals}{If true, additionally returns residuals dataframe (default FALSE).}
+
+\item{verbose}{If true, prints verbose output (default FALSE).}
 }
 \value{
 A dataframe of scored data with separate columns given by the specified control
-  and condition names.
+  and condition names. If return_residuals is true, instead returns a list where the
+  first element is the scored data and the second is the residuals dataframe.
 }
 \description{
 Scores guides for any number of condition screens against a control screen

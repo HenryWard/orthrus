@@ -8,13 +8,15 @@ plot_significant_response_combn(
   scores,
   condition_name,
   filter_names = NULL,
-  loess = TRUE
+  loess = TRUE,
+  neg_type = "Negative",
+  pos_type = "Positive"
 )
 }
 \arguments{
-\item{scores}{Dataframe of scores returned from \code{call_significant_response_dual}.}
+\item{scores}{Dataframe of scores returned from \code{call_significant_response_combn}.}
 
-\item{condition_name}{Name of condition passed to \code{call_significant_response_dual}.}
+\item{condition_name}{Name of condition passed to \code{call_significant_response_combn}.}
 
 \item{filter_names}{If a list of column names is given, calls points as non-significant 
 if they are significant in the provided columsn (e.g. to remove points significant 
@@ -22,6 +24,12 @@ in control screens; default NULL).}
 
 \item{loess}{If true and data was loess-normalized, plots loess null model instead
 (default TRUE).}
+
+\item{neg_type}{Label for significant effects with a negative differential effect
+passed to \code{call_significant_response_combn} (default "Negative").}
+
+\item{pos_type}{Label for significant effects with a positive differential effect
+passed to \code{call_significant_response_combn} (default "Positive").}
 }
 \value{
 A ggplot object.

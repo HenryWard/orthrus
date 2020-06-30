@@ -20,7 +20,7 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
   for (screen in screens) {
     rep_cols <- screen[["replicates"]]
     if (length(rep_cols) > 1) {
-      pairs <- combn(rep_cols, 2)
+      pairs <- utils::combn(rep_cols, 2)
       for (i in 1:ncol(pairs)) {
         col1 <- pairs[1,i]
         col2 <- pairs[2,i]
@@ -30,7 +30,7 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
         p <- temp[[1]]
         pcc <- temp[[2]]
         file_name <- paste0(col1, "_vs_", col2, "_replicate_comparison.png")
-        ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+        ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
         
         # Stores PCC in dataframe
         if (is.null(pcc_df)) {
@@ -45,8 +45,8 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
   
   # Writes PCCs to file
   pcc_file <- file.path(output_folder, "replicate_pcc.tsv")
-  write.table(pcc_df, pcc_file, quote = FALSE, sep = "\t",
-              row.names = FALSE, col.names = TRUE)
+  utils::write.table(pcc_df, pcc_file, quote = FALSE, sep = "\t",
+                     row.names = FALSE, col.names = TRUE)
 }
 
 #' Plot read counts for a screen.
@@ -59,9 +59,11 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
 #' @param output_folder Folder to output plots to. 
 #' @param log_scale If true, log-normalizes data.
 #' @param pseudocount Pseudocounts to add to log-normalized data if specified (default 1).
+#' @param display_numbers Whether or not to include PCC values in heatmap (default TRUE).
 #' @export
 plot_screen_reads <- function(df, screens, output_folder, 
-                              log_scale = TRUE, pseudocount = 1) {
+                              log_scale = TRUE, pseudocount = 1,
+                              display_numbers = TRUE) {
   
   # Plots read count histograms for all replicates of all screens and stores total reads 
   reads_df <- NULL
@@ -83,7 +85,7 @@ plot_screen_reads <- function(df, screens, output_folder,
       all_cols <- c(all_cols, col)
       p <- plot_reads(df, col, log_scale, pseudocount)
       file_name <- paste0(col, "_raw_reads_histogram.png")
-      ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)  
+      ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)  
       col_groups[i] <- screen_name
       i <- i + 1
     }
@@ -95,7 +97,7 @@ plot_screen_reads <- function(df, screens, output_folder,
   
   # Plots total reads
   reads_df$reads <- as.numeric(reads_df$reads)
-  p <- ggplot2::ggplot(reads_df, aes(x = rep, y = reads)) +
+  p <- ggplot2::ggplot(reads_df, ggplot2::aes_string(x = "rep", y = "reads")) +
     ggplot2::geom_bar(stat = "identity", color = "Black", fill = "gray30")
   for (coverage in all_coverage) {
     p <- p + ggplot2::geom_hline(yintercept = coverage, linetype = 2, size = 1, alpha = 0.9, color = "Gray")
@@ -105,7 +107,7 @@ plot_screen_reads <- function(df, screens, output_folder,
     ggplot2::ylab("Total reads") +
     ggplot2::scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
     ggthemes::theme_tufte(base_size = 20) +
-    ggplot2::theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    ggplot2::theme(axis.text.x = ggplot2:: element_text(angle = 45, hjust = 1))
   ggplot2::ggsave(file.path(output_folder, "total_reads.png"), plot = p, width = 10, height = 7, dpi = 300)
   
   # Gets colors for different screens
@@ -119,7 +121,7 @@ plot_screen_reads <- function(df, screens, output_folder,
       df[,col] <- log2(df[,col] + 1)
     }
   }
-  cor_mat <- data.matrix(cor(df))
+  cor_mat <- data.matrix(stats::cor(df))
   
   # Gets annotation for heatmap
   col_groups <- data.frame("Screen" = col_groups)
@@ -128,7 +130,7 @@ plot_screen_reads <- function(df, screens, output_folder,
   
   # Gets color for heatmap values
   breaks <- seq(-1, 1, by = (1/150))
-  pal <- colorRampPalette(c("#7fbf7b", "#f7f7f7", "#af8dc3"))(n = length(breaks))
+  pal <- grDevices::colorRampPalette(c("#7fbf7b", "#f7f7f7", "#af8dc3"))(n = length(breaks))
   
   # Plots heatmap of raw reads
   filename <- file.path(output_folder, "screen_heatmap.png")
@@ -136,7 +138,7 @@ plot_screen_reads <- function(df, screens, output_folder,
                      border_color = NA,
                      annotation_col = col_groups,
                      annotation_colors = screen_colors,
-                     display_numbers = TRUE,
+                     display_numbers = display_numbers,
                      color = pal, 
                      breaks = breaks,
                      filename = filename)
@@ -158,7 +160,7 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
     df[,col] <- log2(df[,col] + 1)
     y_label <- "Number of log-normalized read counts"
   }
-  p <- ggplot2::ggplot(df, aes_string(col)) +
+  p <- ggplot2::ggplot(df, ggplot2::aes_string(col)) +
     ggplot2::geom_histogram(bins = 30) +
     ggplot2::xlab(x_label) +
     ggplot2::ylab(y_label) +
@@ -169,10 +171,12 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
 #' Plots sample comparisons.
 #'
 #' Pretty-plots comparisons between two samples in a scatterplot.
-#'
+#
 #' @param df Reads or lfc dataframe.
 #' @param xcol Name of column containing values to plot on the x-axis.
 #' @param ycol Name of column containing values to plot on the y-axis.
+#' @param xlab X-axis label.
+#' @param ylab Y-axis label.
 #' @param color_col Name of column to color points by (optional).
 #' @param color_lab Name of color legend (optional, defaults to color_col).
 #' @param print_cor If true, prints Pearson correlation between columns 
@@ -186,14 +190,14 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
   # Optionally prints Pearson correlation between given columns
   pcc <- NA
   if (print_cor) {
-    pcc <- cor(df[[xcol]], df[[ycol]])
+    pcc <- stats::cor(df[[xcol]], df[[ycol]])
     cat(paste("Pearson correlation between", xcol, "and", ycol, ":", pcc, "\n"))
   }
   
   # Makes plot
   p <- NULL
   if (is.null(color_col)) {
-    p <- ggplot2::ggplot(df, aes_string(x = xcol, y = ycol)) +
+    p <- ggplot2::ggplot(df, ggplot2::aes_string(x = xcol, y = ycol)) +
       ggplot2::geom_abline(slope = 1, intercept = 0, color = "black", linetype = 2, size = 1) +
       ggplot2::geom_point(size = 1.5, alpha = 0.7) +
       ggplot2::xlab(xlab) +
@@ -203,7 +207,7 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
     if (is.null(color_lab)) {
       color_lab <- color_col
     }
-    p <- ggplot2::ggplot(df, aes_string(x = xcol, y = ycol, color = color_col)) +
+    p <- ggplot2::ggplot(df, ggplot2::aes_string(x = xcol, y = ycol, color = color_col)) +
       ggplot2::geom_abline(slope = 1, intercept = 0, color = "black", linetype = 2, size = 1) +
       ggplot2::geom_point(size = 1.5, alpha = 0.7) +
       ggplot2::scale_color_gradientn(colors = c("blue", "gray"), name = color_lab) +
@@ -261,7 +265,7 @@ plot_significant_response <- function(scores, control_name, condition_name,
   }
 
   # Builds basic plot
-  p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_", control_name), 
+  p <- ggplot2::ggplot(scores, ggplot2::aes_string(x = paste0("mean_", control_name), 
                                           y = paste0("mean_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
     ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray")
@@ -275,7 +279,7 @@ plot_significant_response <- function(scores, control_name, condition_name,
   
   # Finishes plot
   p <- p + 
-    ggplot2::geom_point(aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
+    ggplot2::geom_point(ggplot2::aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +
     ggplot2::xlab(paste0(control_name, " mean log FC")) +
@@ -283,9 +287,9 @@ plot_significant_response <- function(scores, control_name, condition_name,
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20) +
-    ggplot2::theme(axis.text.x = element_text(color = "Black", size = 16),
-                   axis.text.y = element_text(color = "Black", size = 16),
-                   legend.text = element_text(size = 16))
+    ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
+                   axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
+                   legend.text = ggplot2:: element_text(size = 16))
   return(p)
 }
 
@@ -350,7 +354,7 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
   }
   
   # Plots data
-  p <- ggplot2::ggplot(scores, aes_string(x = paste0("mean_single_", condition_name), 
+  p <- ggplot2::ggplot(scores, ggplot2::aes_string(x = paste0("mean_single_", condition_name), 
                                           y = paste0("mean_combn_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
     ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray")
@@ -364,7 +368,7 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
   
   # Finishes plot
   p <- p +
-    ggplot2::geom_point(aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
+    ggplot2::geom_point(ggplot2::aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +
     ggplot2::xlab(paste0(condition_name, " mean expected single-targeted log FC")) +
@@ -372,9 +376,9 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20) +
-    ggplot2::theme(axis.text.x = element_text(color = "Black", size = 16),
-                   axis.text.y = element_text(color = "Black", size = 16),
-                   legend.text = element_text(size = 16))
+    ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
+                   axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
+                   legend.text = ggplot2:: element_text(size = 16))
   return(p)
 }
 
@@ -439,7 +443,8 @@ plot_lfc <- function(scores, residuals, control_name, condition_name, output_fol
       ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::xlab(x_label) +
       ggplot2::ylab(y_label) +
-      ggplot2::geom_bar(aes(x = ID, y = lfc), stat = "identity", color = "Black", fill = alpha(c("gray30"), 1)) +
+      ggplot2::geom_bar(ggplot2::aes_string(x = "ID", y = "lfc"), stat = "identity", color = "Black", 
+                        fill = ggplot2::alpha(c("gray30"), 1)) +
       ggplot2::coord_flip() +
       ggthemes::theme_tufte(base_size = 20)
     
@@ -533,13 +538,14 @@ plot_lfc_combn <- function(scores, residuals, condition_name, output_folder,
       ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::xlab(x_label) +
       ggplot2::ylab(y_label) +
-      ggplot2::geom_bar(aes(x = ID, y = lfc), stat = "identity", color = "Black", fill = alpha(c("gray30"), 1)) +
+      ggplot2::geom_bar(ggplot2::aes_string(x = "ID", y = "lfc"), stat = "identity", color = "Black", 
+                        fill = ggplot2::alpha(c("gray30"), 1)) +
       ggplot2::coord_flip() +
       ggplot2::facet_grid(. ~ orientation) +
       ggthemes::theme_tufte(base_size = 20) +
-      ggplot2::theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
-                     panel.border = element_rect(fill = NA, color = "black"))
+      ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+                     axis.ticks.y = ggplot2::element_blank(),
+                     panel.border = ggplot2::element_rect(fill = NA, color = "black"))
     
     # Gets type and rank of effect
     effect <- ""

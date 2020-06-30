@@ -22,6 +22,10 @@ plot_samples(
 
 \item{ycol}{Name of column containing values to plot on the y-axis.}
 
+\item{xlab}{X-axis label.}
+
+\item{ylab}{Y-axis label.}
+
 \item{color_col}{Name of column to color points by (optional).}
 
 \item{color_lab}{Name of color legend (optional, defaults to color_col).}
@@ -30,7 +34,8 @@ plot_samples(
 (default FALSE).}
 }
 \value{
-A ggplot object.
+A list of two elements. The first is a ggplot object and the
+  second is the correlation between xcol and ycol, if print_cor = TRUE.
 }
 \description{
 Pretty-plots comparisons between two samples in a scatterplot.

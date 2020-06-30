@@ -5,7 +5,7 @@
 \alias{chymera_paralog}
 \title{Raw reads for paralog screen from CHyMErA paper.}
 \format{
-A data frame with 92,746 rows and 35 variables:
+A data frame with 92,746 rows and 32 variables:
 \describe{
   \item{ID}{guide ID}
   \item{Library}{which library the guide belongs to, of "DualTargeting", 
@@ -26,12 +26,26 @@ A data frame with 92,746 rows and 35 variables:
                          "NT" if non-targeting}
   \item{CNN.Score}{score for guide quality based on CNN trained as described
                    in paper mentioned above}
-  \item{etc.}{all following columns are read counts for specific technical replicates
-              (A,B or C) and timepoints (T0, T12, T18, T24 or T29), where "HAP1" screens 
-              were performed with HAP1 cells, "RPE1" screens were performed with RPE1 
-              cells, and "HAP1.Torin" screens were performed with HAP1 cells and Torin1 
-              drug treatment}
-  ...
+  \item{HAP1.T0}{raw read counts for HAP1 - Torin at T0}
+  \item{HAP1.T12A}{raw read counts for HAP1 - Torin at T12, technical replicate A}
+  \item{HAP1.T12B}{raw read counts for HAP1 - Torin at T12, technical replicate B}
+  \item{HAP1.T12C}{raw read counts for HAP1 - Torin at T12, technical replicate C}
+  \item{HAP1.T18A}{raw read counts for HAP1 - Torin at T18, technical replicate A}
+  \item{HAP1.T18B}{raw read counts for HAP1 - Torin at T18, technical replicate B}
+  \item{HAP1.T18C}{raw read counts for HAP1 - Torin at T18, technical replicate C}
+  \item{HAP1.Torin.T12A}{raw read counts for HAP1 + Torin at T12, technical replicate A}
+  \item{HAP1.Torin.T12B}{raw read counts for HAP1 + Torin at T12, technical replicate B}
+  \item{HAP1.Torin.T12C}{raw read counts for HAP1 + Torin at T12, technical replicate C}
+  \item{HAP1.Torin.T18A}{raw read counts for HAP1 + Torin at T18, technical replicate A}
+  \item{HAP1.Torin.T18B}{raw read counts for HAP1 + Torin at T18, technical replicate B}
+  \item{HAP1.Torin.T18C}{raw read counts for HAP1 + Torin at T18, technical replicate C}
+  \item{RPE1.T0}{raw read counts for RPE1 at T0}
+  \item{RPE1.T18A}{raw read counts for RPE1 at T18, technical replicate A}
+  \item{RPE1.T18B}{raw read counts for RPE1 at T18, technical replicate B}
+  \item{RPE1.T18C}{raw read counts for RPE1 at T18, technical replicate C}
+  \item{RPE1.T24A}{raw read counts for RPE1 at T24, technical replicate A}
+  \item{RPE1.T24B}{raw read counts for RPE1 at T24, technical replicate B}
+  \item{RPE1.T24C}{raw read counts for RPE1 at T24, technical replicate C}
 }
 }
 \source{

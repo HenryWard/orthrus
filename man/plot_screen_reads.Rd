@@ -9,7 +9,8 @@ plot_screen_reads(
   screens,
   output_folder,
   log_scale = TRUE,
-  pseudocount = 1
+  pseudocount = 1,
+  display_numbers = TRUE
 )
 }
 \arguments{
@@ -22,7 +23,10 @@ plot_screen_reads(
 \item{log_scale}{If true, log-normalizes data.}
 
 \item{pseudocount}{Pseudocounts to add to log-normalized data if specified (default 1).}
+
+\item{display_numbers}{Whether or not to include PCC values in heatmap (default TRUE).}
 }
 \description{
-Plots a histogram of read counts for each replicate of all screens.
+Plots a histogram of read counts for each replicate of all screens. Also
+plots total reads for all screens.
 }

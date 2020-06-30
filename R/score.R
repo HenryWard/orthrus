@@ -159,8 +159,8 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
       scores[[paste0("n_", name)]][i] <- length(rep_mean_condition)
       scores[[paste0("mean_", control_name)]][i] <- mean(rep_mean_control)
       scores[[paste0("mean_", name)]][i] <- mean(rep_mean_condition)
-      scores[[paste0("variance_", control_name)]][i] <- var(rep_mean_control)
-      scores[[paste0("variance_", name)]][i] <- var(rep_mean_condition)
+      scores[[paste0("variance_", control_name)]][i] <- stats::var(rep_mean_control)
+      scores[[paste0("variance_", name)]][i] <- stats::var(rep_mean_condition)
       scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(diff)
       
       # Appends mean LFCs for loess-normalization if specified
@@ -171,7 +171,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
       # Performs the specified type of testing or stores residuals for later testing
       if (test == "rank-sum") {
         scores[[paste0("pval_", name, "_vs_", control_name)]][i] <- 
-          suppressWarnings(wilcox.test(rep_mean_condition, rep_mean_control))$p.value
+          suppressWarnings(stats::wilcox.test(rep_mean_condition, rep_mean_control))$p.value
       } else if (test == "moderated-t") {
         if (length(diff) < max_guides) { diff <- c(diff, rep(NA, max_guides - length(diff))) } 
         condition_residuals[[name]][i,1:max_guides] <- diff 
@@ -220,7 +220,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   # Computes FDRs
   for (name in condition_names) {
     scores[[paste0("fdr_", name, "_vs_", control_name)]] <- 
-      p.adjust(scores[[paste0("pval_", name, "_vs_", control_name)]], method = "BH")
+      stats::p.adjust(scores[[paste0("pval_", name, "_vs_", control_name)]], method = "BH")
   }
   
   # Removes genes with too few observations
@@ -483,8 +483,8 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       
       # Performs the specified type of testing or stores residuals for later testing
       if (test == "rank-sum") {
-        scores[[paste0("pval1_combn_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(combn1, null1))$p.value
-        scores[[paste0("pval2_combn_vs_single_", name)]][i] <- suppressWarnings(wilcox.test(combn2, null2))$p.value 
+        scores[[paste0("pval1_combn_vs_single_", name)]][i] <- suppressWarnings(stats::wilcox.test(combn1, null1))$p.value
+        scores[[paste0("pval2_combn_vs_single_", name)]][i] <- suppressWarnings(stats::wilcox.test(combn2, null2))$p.value 
       } else if (test == "moderated-t") {
         residuals1 <- combn1 - null1
         residuals2 <- combn2 - null2
@@ -566,9 +566,9 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
   # Gets FDRs
   for (name in condition_names) {
     scores[[paste0("fdr1_combn_vs_single_", name)]] <- 
-      p.adjust(scores[[paste0("pval1_combn_vs_single_", name)]], method = "BH")
+      stats::p.adjust(scores[[paste0("pval1_combn_vs_single_", name)]], method = "BH")
     scores[[paste0("fdr2_combn_vs_single_", name)]] <- 
-      p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = "BH")
+      stats::p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = "BH")
   }
   
   # Explicitly returns scored data
@@ -712,7 +712,7 @@ loess_MA <- function(x, y, sp = 0.4, dg = 2, binSize = 100) {
   else {
     m <- y - x
     a <- y + x
-    A <- (a - median(a, na.rm = T)) / mad(a, na.rm = T) #scale to generate bins along m
+    A <- (a - stats::median(a, na.rm = T)) / stats::mad(a, na.rm = T) #scale to generate bins along m
     B <- seq(floor(min(A, na.rm = T)), ceiling(max(A, na.rm = T)), .1) #define bins
     b <- c() #indices for model training
     for(i in 1:(length(B) - 1)) {
@@ -724,8 +724,8 @@ loess_MA <- function(x, y, sp = 0.4, dg = 2, binSize = 100) {
       b <- c(b, temp_b)
     }
     I <- is.finite(m[b]) & is.finite(a[b]) #only use finite values
-    model <- loess(m[b][I] ~ a[b][I], span = sp, degree = dg) #train model on m ~ a (approx. y ~ x)
-    expected <- predict(model, a) #predict expected m ~ a
+    model <- stats::loess(m[b][I] ~ a[b][I], span = sp, degree = dg) #train model on m ~ a (approx. y ~ x)
+    expected <- stats::predict(model, a) #predict expected m ~ a
     gi <- m - expected
   }
   result <- list()
