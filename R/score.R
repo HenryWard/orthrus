@@ -226,6 +226,9 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   # Removes genes with too few observations
   scores <- scores[scores[[paste0("n_", control_name)]] >= min_guides,]
   
+  # Removes extra zero row from residuals
+  loess_residuals <- loess_residuals[1:(nrow(loess_residuals) - 1),]
+  
   # Explicitly returns scored data
   if (return_residuals) {
     return(list(scores, loess_residuals))
@@ -291,6 +294,8 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       paste0("n_single_", name),
       paste0("mean_combn_", name),
       paste0("mean_single_", name),
+      paste0("var_combn_", name),
+      paste0("var_single_", name),
       paste0("orientation_agree_", name),
       paste0("differential_combn_vs_single_", name),
       paste0("pval1_combn_vs_single_", name),
@@ -503,6 +508,8 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       scores[[paste0("n_single_", name)]][i] <- length(null1)
       scores[[paste0("mean_combn_", name)]][i] <- mean(c(combn1, combn2))
       scores[[paste0("mean_single_", name)]][i] <- mean(c(null1, null2))
+      scores[[paste0("var_combn_", name)]][i] <- mean(c(stats::var(combn1), stats::var(combn2)))
+      scores[[paste0("var_single_", name)]][i] <- mean(c(stats::var(null1), stats::var(null2)))
       
       # Increments counter after looping through all conditions
       increment1 <- length(combn1)
@@ -570,6 +577,10 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
     scores[[paste0("fdr2_combn_vs_single_", name)]] <- 
       stats::p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = "BH")
   }
+  
+  # Removes extra zero row from residuals
+  loess_residuals[[1]] <- loess_residuals[[1]][1:(nrow(loess_residuals[[1]]) - 1),]
+  loess_residuals[[2]] <- loess_residuals[[2]][1:(nrow(loess_residuals[[2]]) - 1),]
   
   # Explicitly returns scored data
   if (return_residuals) {
