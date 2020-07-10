@@ -13,6 +13,9 @@
 #' @export 
 plot_rep_comparisons <- function(df, screens, output_folder) {
   
+  # Checks for input errors
+  check_screen_params(df, screens)
+  
   # Builds dataframe of replicate PCCs
   pcc_df <- NULL
   
@@ -54,7 +57,7 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
 #' Plots a histogram of read counts for each replicate of all screens. Also
 #' plots total reads for all screens.
 #' 
-#' @param df Reads dataframes.
+#' @param df Reads dataframe.
 #' @param screens List of screens created with \code{add_screens}.
 #' @param output_folder Folder to output plots to. 
 #' @param log_scale If true, log-normalizes data.
@@ -64,6 +67,9 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
 plot_screen_reads <- function(df, screens, output_folder, 
                               log_scale = TRUE, pseudocount = 1,
                               display_numbers = TRUE) {
+  
+  # Checks for input errors
+  check_screen_params(df, screens)
   
   # Plots read count histograms for all replicates of all screens and stores total reads 
   reads_df <- NULL

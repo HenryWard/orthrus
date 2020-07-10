@@ -275,6 +275,9 @@ split_guides_by_type <- function(guides) {
 normalize_screens <- function(df, screens, filter_names = NULL, cf1 = 1e6, cf2 = 1, 
                               min_reads = 30, max_reads = 10000) {
   
+  # Checks for input errors
+  check_screen_params(df, screens)
+  
   # Flags guides with too few read counts
   all_names <- names(screens)
   for (name in filter_names) {
