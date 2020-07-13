@@ -312,7 +312,15 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div id="important-publications" class="section level3">
 <h3>Important publications</h3>
 <p>Please refer to the following publications for more information on the CHyMErA experimental platform, CRISPR screens and scoring them, or alternative approaches for scoring combinatorial CRISPR screening data.</p>
-<p><a href="https://www.nature.com/articles/s41587-020-0437-z">Gonatopoulos-Pournatzis et al., 2020</a> <a href="https://www.nature.com/articles/s42255-020-0211-z">Aregger et al., 2020</a> <a href="https://link.springer.com/article/10.1186/s13059-019-1745-9">Zamanighomi et al., 2020</a> <a href="https://www.g3journal.org/content/7/8/2719.abstract">Hart et al., 2017</a> <a href="https://www.sciencedirect.com/science/article/pii/S0092867415014956">Hart et al., 2015</a> <a href="https://science.sciencemag.org/content/343/6166/84">Shalem et al., 2014</a> <a href="https://science.sciencemag.org/content/343/6166/80">Wang et al., 2014</a></p>
+<ul>
+<li><a href="https://www.nature.com/articles/s41587-020-0437-z">Gonatopoulos-Pournatzis et al., 2020</a></li>
+<li><a href="https://www.nature.com/articles/s42255-020-0211-z">Aregger et al., 2020</a></li>
+<li><a href="https://link.springer.com/article/10.1186/s13059-019-1745-9">Zamanighomi et al., 2020</a></li>
+<li><a href="https://www.g3journal.org/content/7/8/2719.abstract">Hart et al., 2017</a></li>
+<li><a href="https://www.sciencedirect.com/science/article/pii/S0092867415014956">Hart et al., 2015</a></li>
+<li><a href="https://science.sciencemag.org/content/343/6166/84">Shalem et al., 2014</a></li>
+<li><a href="https://science.sciencemag.org/content/343/6166/80">Wang et al., 2014</a></li>
+</ul>
 </div>
 <div id="prerequisites" class="section level3">
 <h3>Prerequisites</h3>
@@ -448,7 +456,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="combinatorial-scoring" class="section level3">
 <h3>Combinatorial scoring</h3>
-<p>Scoring combinatorial data for the paralog section of the library is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to <strong>score data against a derived null model.</strong></p>
+<p>Scoring combinatorial data for the paralog section of the library is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to <strong>score combinatorial data against a derived null model.</strong></p>
 <p>But first, because we aren’t interested in scoring the effects of non-targeting guides and because this could potentially drastically slow the scoring process, we will remove non-targeting guides from the data.</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1">nt_ind &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">lapply</span>(paralogs, <span class="cf">function</span>(x) x[[<span class="st">&quot;gene1&quot;</span>]] <span class="op">==</span><span class="st"> &quot;NT&quot;</span> <span class="op">|</span><span class="st"> </span>x[[<span class="st">&quot;gene2&quot;</span>]] <span class="op">==</span><span class="st"> &quot;NT&quot;</span>))</a>
 <a class="sourceLine" id="cb16-2" data-line-number="2">paralogs &lt;-<span class="st"> </span>paralogs[<span class="op">!</span>nt_ind]</a></code></pre></div>

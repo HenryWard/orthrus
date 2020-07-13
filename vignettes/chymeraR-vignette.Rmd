@@ -30,13 +30,13 @@ In-depth descriptions of this dataset and how it was originally scored are avail
 
 Please refer to the following publications for more information on the CHyMErA experimental platform, CRISPR screens and scoring them, or alternative approaches for scoring combinatorial CRISPR screening data.
 
-[Gonatopoulos-Pournatzis et al., 2020](https://www.nature.com/articles/s41587-020-0437-z)
-[Aregger et al., 2020](https://www.nature.com/articles/s42255-020-0211-z)
-[Zamanighomi et al., 2020](https://link.springer.com/article/10.1186/s13059-019-1745-9)
-[Hart et al., 2017](https://www.g3journal.org/content/7/8/2719.abstract)
-[Hart et al., 2015](https://www.sciencedirect.com/science/article/pii/S0092867415014956)
-[Shalem et al., 2014](https://science.sciencemag.org/content/343/6166/84)
-[Wang et al., 2014](https://science.sciencemag.org/content/343/6166/80)
+* [Gonatopoulos-Pournatzis et al., 2020](https://www.nature.com/articles/s41587-020-0437-z)
+* [Aregger et al., 2020](https://www.nature.com/articles/s42255-020-0211-z)
+* [Zamanighomi et al., 2020](https://link.springer.com/article/10.1186/s13059-019-1745-9)
+* [Hart et al., 2017](https://www.g3journal.org/content/7/8/2719.abstract)
+* [Hart et al., 2015](https://www.sciencedirect.com/science/article/pii/S0092867415014956)
+* [Shalem et al., 2014](https://science.sciencemag.org/content/343/6166/84)
+* [Wang et al., 2014](https://science.sciencemag.org/content/343/6166/80)
 
 ### Prerequisites
 
@@ -230,7 +230,7 @@ write.table(dual_scores2, file.path(output_folder, "dual_targeted_gene_calls_t18
 
 ### Combinatorial scoring
 
-Scoring combinatorial data for the paralog section of the library is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to **score data against a derived null model.** 
+Scoring combinatorial data for the paralog section of the library is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to **score combinatorial data against a derived null model.** 
 
 But first, because we aren't interested in scoring the effects of non-targeting guides and because this could potentially drastically slow the scoring process, we will remove non-targeting guides from the data.
 
