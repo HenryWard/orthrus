@@ -30,15 +30,13 @@ In-depth descriptions of this dataset and how it was originally scored are avail
 
 Please refer to the following publications for more information on the CHyMErA experimental platform, CRISPR screens and scoring them, or alternative approaches for scoring combinatorial CRISPR screening data.
 
-[Gonatopoulos-Pournatzis et al.](https://www.nature.com/articles/s41587-020-0437-z)
-
-max's scoring paper
-
-flex
-
-gemini for an alternative scoring approach?
-
-CRISPR screen overview papers?
+[Gonatopoulos-Pournatzis et al., 2020](https://www.nature.com/articles/s41587-020-0437-z)
+[Aregger et al., 2020](https://www.nature.com/articles/s42255-020-0211-z)
+[Zamanighomi et al., 2020](https://link.springer.com/article/10.1186/s13059-019-1745-9)
+[Hart et al., 2017](https://www.g3journal.org/content/7/8/2719.abstract)
+[Hart et al., 2015](https://www.sciencedirect.com/science/article/pii/S0092867415014956)
+[Shalem et al., 2014](https://science.sciencemag.org/content/343/6166/84)
+[Wang et al., 2014](https://science.sciencemag.org/content/343/6166/80)
 
 ### Prerequisites
 
@@ -95,10 +93,16 @@ screens <- add_screen(screens, "RPE1_T24", c("RPE1.T24A", "RPE1.T24B", "RPE1.T24
 
 ### Processing and QC
 
-The first thing we want to do for any experiment is generate plots of raw read counts for all technical replicates. The easiest way to do this is to make histograms of log-scaled read counts for each replicate. A single function in chymeraR, `plot_screen_reads`, takes care of this for all screens. Like other plotting functions that output multiple plots in chymeraR, `plot_screen_reads` requires you to specify a folder to save plots to. Because these are QC plots, we will output them to the previously-created QC folder. 
+The first thing we want to do for any experiment is to generate quality control (QC) plots for raw read count data in order to diagnose fundamental issues with screens. Specifically, we want to make the following plots:
+
+* Histograms of log-scaled read counts for each replicate.
+* Total reads for all screens, relative to expected coverage for each replicate.
+* A heatmap of Pearson correlations between log-scaled read counts for all replicates.
+
+A single function in chymeraR, `plot_reads_qc`, takes care of this for all screens. Like other plotting functions that output multiple plots in chymeraR, `plot_reads_qc` requires you to specify a folder to save plots to. Because these are QC plots, we will output them to the previously-created QC folder. 
 
 ```{r}
-plot_screen_reads(df, screens, qc_folder)
+plot_reads_qc(df, screens, qc_folder)
 ```
 
 Now we need to normalize each screen in three different ways: 
@@ -115,10 +119,16 @@ This function additionally removes guides that are lowly-expressed or highly-exp
 df <- normalize_screens(df, screens, filter_names = c("HAP1_T0", "RPE1_T0"), min_reads = 30)
 ```
 
-The final set of QC plots that we need to make consists of scatterplot comparisons between each pair of technical replicates. To make these, we call `plot_rep_comparisons`. While it is possible and sometimes could be a good idea to make these before computing LFCs, these results tend to be more consistent after computing LFCs due to depth-normalization, so we recommend making them at this point in the pipeline. Although this function also outputs Pearson correlations between all technical replicates, like all QC plots, manual inspection for potential problematic outlier guides or other red flags or is recommended.
+The final set of QC plots that we need to make consists of scatterplot comparisons between each pair of technical replicates. To make these, we call `plot_lfc_qc`. While it is possible and sometimes could be a good idea to make these before computing LFCs, these results tend to be more consistent after computing LFCs due to depth-normalization, so we recommend making them at this point in the pipeline. Although this function also outputs Pearson correlations between all technical replicates, like all QC plots, manual inspection for potential problematic outlier guides or other red flags or is recommended.
 
 ```{r}
-plot_rep_comparisons(df, screens, qc_folder)
+plot_lfc_qc(df, screens, qc_folder)
+```
+
+Additionally, for many libraries we also want to measure how well guides that target essential genes dropout compared to all other guides. To compute the AUC under the ROC curve for all essential-targeting guides, we call the function `essential_lfc_qc`, which outputs results to the file "essential_PR_QC.txt" in the given QC folder. AUC values closer to 1 are typically better. To call this function, we also have to pass in the names of columns containing symbols for each gene.
+
+```{r}
+essential_lfc_qc(df, screens, "Gene.symbol1", "Gene.symbol2", qc_folder)
 ```
 
 Before we can parse the data into a structure more suitable for scoring, we need to ensure that we differentiate gene pairs for intergenic-targeting guides from gene pairs where both guides target the same gene. Not all libraries will require this step, but for our library it's necessary. Intergenic regions are wrongly denoted for exonic-exonic dual-targeting guides by the symbol "---", which we will change to "None".
@@ -165,13 +175,21 @@ Now that we've processed our data, we need to score it. Thankfully, chymeraR mak
 
 The data in our library that lends itself to this type of comparison is the dual-targeting data contained in the `dual` object. We want to compare untreated screens to screens treated with Torin1. To do this, we pass the data, screens, screen names we want to compare to each other (the control screen name comes first), and the type of testing we want to run into the `score_conditions_vs_control` function. We need to do this twice because we have two separate controls to compare against, although we can pass any number of condition names as a list into the fourth argument of the function. E.g. if we had another drug screen for T12, "BTZ_T12", we could instead pass `c("Torin_T12", "BTZ_T12")` into the first function call below.
 
-By default the chosen test is moderated-t with loess correction on residuals enabled, for improved sensitivity. Although chymeraR supports other types of testing, which are documented in the package, because they are less sensitive we do not recommend them at this time.
+By default the chosen test is moderated-t with loess correction on residuals enabled and downstream Benjamini and Yekutieli FDR correction. Although chymeraR supports other types of testing, which are documented in the package, because they are less sensitive we do not recommend them at this time. 
+
+The scoring function outputs a named list containing two elements. The first element, `scored_data`, is a dataframe of scored data for all gene pairs. The second element, `residuals`, is a dataframe of per-guide effects and residual values for all guides. The scored data is used for hit-calling through the function `call_significant_response`, as well as final analyses, and the residuals are used to make guide-level plots of 
 
 ``` {r}
-dual_scores1 <- score_conditions_vs_control(dual, screens, "HAP1_T12", "Torin_T12", 
-                                            test = "moderated-t", loess = TRUE)
-dual_scores2 <- score_conditions_vs_control(dual, screens, "HAP1_T18", "Torin_T18", 
-                                            test = "moderated-t", loess = TRUE)
+# Scores data
+temp <- score_conditions_vs_control(dual, screens, "HAP1_T12", "Torin_T12", 
+                                    test = "moderated-t", loess = TRUE)
+dual_scores1 <- temp[["scored_data"]]
+residuals1 <- temp[["residuals"]]
+temp <- score_conditions_vs_control(dual, screens, "HAP1_T18", "Torin_T18", 
+                                    test = "moderated-t", loess = TRUE,
+                                    return_residuals = FALSE)
+dual_scores2 <- temp[["scored_data"]]
+residuals2 <- temp[["residuals"]]
 ```
 
 After scoring data, we want to call hits according to user-specific thresholds on FDR and effect size, naming negative effects and positive effects according to the type of screen performed, using the `call_significant_response` function. The effect size threshold, `differential_threshold`, is based on the absolute value of the effect. Here, only guides with abs(effect) < 0.5 and fdr < 0.1 will be called as significant hits.
@@ -183,6 +201,15 @@ dual_scores1 <- call_significant_response(dual_scores1, "HAP1_T12", "Torin_T12",
 dual_scores2 <- call_significant_response(dual_scores2, "HAP1_T18", "Torin_T18",
                                           neg_type = "Sensitizer", pos_type = "Suppressor",
                                           fdr_threshold = 0.1, differential_threshold = 0.5)
+```
+
+We also want to make lfc plots for all significant hits, and output those to a new subfolder of the QC folder.
+
+```{r}
+plot_lfc(dual_scores1, residuals, "HAP1_T12", "Torin_T12", file.path(lfc_folder, "dual_lfc_t12"),
+         neg_type = "Sensitizer", pos_type = "Suppressor")
+plot_lfc(dual_scores2, residuals, "HAP1_T18", "Torin_T18", file.path(lfc_folder, "dual_lfc_t18"),
+         neg_type = "Sensitizer", pos_type = "Suppressor")
 ```
 
 Finally, to finish scoring this data we will generate pretty plots describing differential effects and save both those and the scored data to file. Since these plotting functions only return one plot, they return a ggplot object instead of directly saving to file. Since we renamed the negative and positive effect type labels above, we have to pass our custom labels into the plotting function as well.
@@ -201,27 +228,6 @@ write.table(dual_scores2, file.path(output_folder, "dual_targeted_gene_calls_t18
             row.names = FALSE, col.names = TRUE, quote = FALSE)
 ```
 
-### Options for dual-targeted scoring
-
-Dual-targeting scoring can optionally output a residual dataframe of fold-change values per gene-pair, which we can use to visually inspect the quality of top hits. This is returned as the second element in an output list from `score_conditions_vs_control` with `return_residuals=TRUE`, where the first element is the scored data as before. 
-
-```{r}
-# Scores data and calls significant hits
-temp <- score_conditions_vs_control(dual, screens, "HAP1_T18", "Torin_T18", 
-                                    test = "moderated-t", loess = TRUE,
-                                    return_residuals = TRUE)
-dual_scores2 <- temp[[1]]
-residuals <- temp[[2]]
-dual_scores2 <- call_significant_response(dual_scores, "HAP1_T18", "Torin_T18",
-                                          neg_type = "Sensitizer", pos_type = "Suppressor",
-                                          differential_threshold = 0.5)
-
-# Makes LFC plots for all top hits
-plot_lfc(dual_scores2, residuals, "HAP1_T18", "Torin_T18", lfc_folder)
-```
-
-This alternate way to call `score_conditions_vs_control` makes plots of LFCs for each significant hit and outputs them to a target folder.
-
 ### Combinatorial scoring
 
 Scoring combinatorial data for the paralog section of the library is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to **score data against a derived null model.** 
@@ -237,9 +243,19 @@ Scoring the data proceeds in much the same way as for conditions against a contr
 
 ```{r}
 screens_to_score <- c("HAP1_T12", "HAP1_T18", "RPE1_T18", "RPE1_T24", "Torin_T12", "Torin_T18")
-paralog_scores <- score_combn_vs_single(paralogs, single, screens, screens_to_score, test = "moderated-t")
+temp <- score_combn_vs_single(paralogs, single, screens, screens_to_score, test = "moderated-t")
+paralog_scores <- paralog_scores[["scored_data"]]
+paralog_residuals <- temp[["residuals"]]
 paralog_scores <- call_significant_response_combn(paralog_scores, screens_to_score,
                                                   neg_type = "Negative GI", pos_type = "Positive GI")
+
+# Plots LFC of all hits
+residual_folder <- file.path(lfc_folder, "HAP1_T18_combn")
+plot_lfc_combn(paralog_scores, paralog_residuals, "HAP1_T18", residual_folder,
+               neg_type = "Negative GI", pos_type = "Positive GI")
+residual_folder <- file.path(lfc_folder, "Torin_T18_combn")
+plot_lfc_combn(paralog_scores, paralog_residuals, "Torin_T18", residual_folder,
+               neg_type = "Negative GI", pos_type = "Positive GI")
 ```
 
 We then make output plots for all screens.
@@ -270,26 +286,6 @@ Finally, we save our scored data to file.
 write.table(paralog_scores, file.path(output_folder, "paralog_gene_calls.tsv"), sep = "\t",
             row.names = FALSE, col.names = TRUE, quote = FALSE)
 ```
-
-### Options for combinatorial scoring
-
-Like dual-targeting scoring, the combinatorial scoring mode can optionally output a residual dataframe of fold-change values per gene-pair, which we can use to visually inspect the quality of top hits. This is returned as the second element in an output list from `score_conditions_vs_control_combn` with `return_residuals=TRUE`, where the first element is the scored data as before. 
-
-```{r}
-# Scores data and calls significant hits
-screens_to_score <- c("HAP1_T12", "HAP1_T18", "RPE1_T18", "RPE1_T24", "Torin_T12", "Torin_T18")
-paralog_scores <- score_combn_vs_single(paralogs, single, screens, screens_to_score, test = "moderated-t",
-                                        return_residuals = TRUE)
-paralog_scores <- temp[[1]]
-residuals <- temp[[2]]
-paralog_scores <- call_significant_response_combn(paralog_scores, screens_to_score,
-                                                  neg_type = "Negative GI", pos_type = "Positive GI")
-
-# Makes LFC plots for all top hits
-plot_lfc(paralog_scores, residuals, "Torin_T18", lfc_folder)
-```
-
-This alternate way to call `score_conditions_vs_control_combn` makes plots of LFCs for each significant hit and outputs them to a target folder.
 
 ### Single-targeted scoring
 

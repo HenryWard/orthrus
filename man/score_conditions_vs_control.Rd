@@ -13,7 +13,8 @@ score_conditions_vs_control(
   min_guides = 3,
   test = "moderated-t",
   loess = TRUE,
-  return_residuals = FALSE,
+  fdr_method = "BY",
+  return_residuals = TRUE,
   verbose = FALSE
 )
 }
@@ -40,14 +41,18 @@ rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t"
 \item{loess}{If true, loess-normalizes residuals before running hypothesis testing.
 Only works when test = "moderated-t" (default TRUE).}
 
-\item{return_residuals}{If true, additionally returns residuals dataframe (default FALSE).}
+\item{fdr_method}{Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default "BY").}
+
+\item{return_residuals}{If FALSE, returns NA instead of residuals dataframe (default TRUE).
+This is recommend if scoring large datasets and memory is a limitation.}
 
 \item{verbose}{If true, prints verbose output (default FALSE).}
 }
 \value{
-A dataframe of scored data with separate columns given by the specified control
-  and condition names. If return_residuals is true, instead returns a list where the
-  first element is the scored data and the second is the residuals dataframe.
+A list containing two dataframes. The first entry, named "scored_data" in the list,
+  contains scored data with separate columns given by the specified control and condition
+  names. The second entry, named "residuals" in the list, is a dataframe containing control,
+  condition and loess-normalized residuals for all guides.
 }
 \description{
 Scores guides for any number of condition screens against a control screen

@@ -10,7 +10,8 @@ plot_lfc_combn(
   condition_name,
   output_folder,
   neg_type = "Negative",
-  pos_type = "Positive"
+  pos_type = "Positive",
+  plot_type = "png"
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ passed to \code{call_significant_response_combn} (default "Negative").}
 
 \item{pos_type}{Label for significant effects with a positive differential effect
 passed to \code{call_significant_response_combn} (default "Positive").}
+
+\item{plot_type}{Type of plot to output, one of "png" or "pdf" (default "png").}
 }
 \description{
 Plots replicate comparisons for all replicates in a list of screens and outputs

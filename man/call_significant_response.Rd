@@ -12,6 +12,7 @@ call_significant_response(
   differential_threshold = 0,
   neg_type = "Negative",
   pos_type = "Positive",
+  fdr_method = "BH",
   expected_guides = 6
 )
 }
@@ -34,6 +35,9 @@ below which gene effects are not called as significant (default 0).}
 
 \item{pos_type}{Label for significant effects with a positive differential effect
 (default "Positive").}
+
+\item{fdr_method}{Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default
+"BY")}
 
 \item{expected_guides}{Number of guides expected per gene-pair, to more accurately
 assign a hit quality metric (default 15).}

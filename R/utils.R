@@ -83,7 +83,7 @@ remove_screen <- function(screen_list, name) {
 #' @param df Reads or LFC dataframe.
 #' @param screens List of screens created with \code{add_screens}.
 #' @return TRUE.
-#' @NoRd
+#' @keywords internal
 check_screen_params <- function(df, screens) {
   
   # Gets all replicates

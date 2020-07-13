@@ -12,6 +12,7 @@ Imports:
 	ggthemes,
 	limma,
 	pheatmap,
+	PRROC,
 	RColorBrewer
 RoxygenNote: 7.1.0
 Suggests: 

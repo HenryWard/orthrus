@@ -30,15 +30,19 @@ scale_values <- function(x) {
 #'   rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t").
 #' @param loess If true, loess-normalizes residuals before running hypothesis testing.
 #'   Only works when test = "moderated-t" (default TRUE).
-#' @param return_residuals If true, additionally returns residuals dataframe (default FALSE). 
+#' @param fdr_method Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default "BY").
+#' @param return_residuals If FALSE, returns NA instead of residuals dataframe (default TRUE).
+#'   This is recommend if scoring large datasets and memory is a limitation.  
 #' @param verbose If true, prints verbose output (default FALSE). 
-#' @return A dataframe of scored data with separate columns given by the specified control
-#'   and condition names. If return_residuals is true, instead returns a list where the
-#'   first element is the scored data and the second is the residuals dataframe. 
+#' @return A list containing two dataframes. The first entry, named "scored_data" in the list,
+#'   contains scored data with separate columns given by the specified control and condition
+#'   names. The second entry, named "residuals" in the list, is a dataframe containing control,
+#'   condition and loess-normalized residuals for all guides.
 #' @export
 score_conditions_vs_control <- function(guides, screens, control_screen_name, condition_screen_names, 
                                         orientation = FALSE, min_guides = 3, test = "moderated-t", 
-                                        loess = TRUE, return_residuals = FALSE, verbose = FALSE) {
+                                        loess = TRUE, fdr_method = "BY",
+                                        return_residuals = TRUE, verbose = FALSE) {
   
   # Runs separately on each orientation if specified
   results1 <- NULL
@@ -64,8 +68,8 @@ score_conditions_vs_control <- function(guides, screens, control_screen_name, co
 # Inner function for the above
 score_conditions_vs_control_inner <- function(guides, screens, control_screen_name, condition_screen_names, 
                                               min_guides = 3, test = "moderated-t", 
-                                              loess = TRUE, screen_prefix = "",
-                                              return_residuals = FALSE, verbose = FALSE) {
+                                              loess = TRUE, screen_prefix = "", fdr_method = "BY",
+                                              return_residuals = TRUE, verbose = FALSE) {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_screen_name
@@ -120,7 +124,6 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
       paste0("n_", name), 
       paste0("mean_", name),
       paste0("variance_", name),
-      # paste0("hit_quality_", name),
       paste0("differential_", name, "_vs_", control_name),
       paste0("pval_", name, "_vs_", control_name),
       paste0("fdr_", name, "_vs_", control_name),
@@ -220,7 +223,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   # Computes FDRs
   for (name in condition_names) {
     scores[[paste0("fdr_", name, "_vs_", control_name)]] <- 
-      stats::p.adjust(scores[[paste0("pval_", name, "_vs_", control_name)]], method = "BH")
+      stats::p.adjust(scores[[paste0("pval_", name, "_vs_", control_name)]], method = fdr_method)
   }
   
   # Removes genes with too few observations
@@ -230,11 +233,14 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   loess_residuals <- loess_residuals[1:(nrow(loess_residuals) - 1),]
   
   # Explicitly returns scored data
+  output <- list()
+  output[["scored_data"]] <- scores
   if (return_residuals) {
-    return(list(scores, loess_residuals))
+    output[["residuals"]] <- loess_residuals
   } else {
-    return(scores)
+    output[["residuals"]] <- NA
   }
+  return(output)
 }
 
 #' Scores conditions against a single control.
@@ -260,16 +266,19 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
 #'   (default 3).
 #' @param loess If true, loess-normalizes residuals before running hypothesis testing.
 #'   Only works when test = "moderated-t" (default TRUE). 
-#' @param return_residuals If true, additionally returns residuals dataframe. 
+#' @param fdr_method Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default "BY").
+#' @param return_residuals If FALSE, doesn't return residuals dataframe (default TRUE).
+#'   This is recommend if scoring large datasets and memory is a limitation.  
 #' @param verbose If true, prints verbose output (default FALSE). 
-#' @return A dataframe of scored data with separate columns given by the specified control
-#'   and condition names. If return_residuals is true, instead returns a list where the
-#'   first element is the scored data and the second is the residuals dataframe.
+#' @return A list containing two dataframes. The first entry, named "scored_data" in the list,
+#'   contains scored data with separate columns given by the specified control and condition
+#'   names. The second entry, named "residuals" in the list, is a dataframe containing control,
+#'   condition and loess-normalized residuals for all guides.
 #' @export
 score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_names, 
                                   min_guides = 3, test = "moderated-t",
-                                  loess = TRUE, return_residuals = FALSE,
-                                  verbose = FALSE) {
+                                  loess = TRUE, fdr_method = "BY",
+                                  return_residuals = TRUE, verbose = FALSE) {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
@@ -573,9 +582,9 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
   # Gets FDRs
   for (name in condition_names) {
     scores[[paste0("fdr1_combn_vs_single_", name)]] <- 
-      stats::p.adjust(scores[[paste0("pval1_combn_vs_single_", name)]], method = "BH")
+      stats::p.adjust(scores[[paste0("pval1_combn_vs_single_", name)]], method = fdr_method)
     scores[[paste0("fdr2_combn_vs_single_", name)]] <- 
-      stats::p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = "BH")
+      stats::p.adjust(scores[[paste0("pval2_combn_vs_single_", name)]], method = fdr_method)
   }
   
   # Removes extra zero row from residuals
@@ -583,11 +592,14 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
   loess_residuals[[2]] <- loess_residuals[[2]][1:(nrow(loess_residuals[[2]]) - 1),]
   
   # Explicitly returns scored data
+  output <- list()
+  output[["scored_data"]] <- scores
   if (return_residuals) {
-    return(list(scores, loess_residuals))
+    output[["residuals"]] <- loess_residuals
   } else {
-    return(scores)
+    output[["residuals"]] <- NA
   }
+  return(output)
 }
 
 #' Call significant responses for scored data.
@@ -608,6 +620,8 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
 #'   (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
 #'   (default "Positive").
+#' @param fdr_method Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default
+#'   "BY")
 #' @param expected_guides Number of guides expected per gene-pair, to more accurately
 #'   assign a hit quality metric (default 15).
 #' @return Dataframe of scored data with differential effects called as significant
@@ -616,7 +630,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
 call_significant_response <- function(scores, control_screen_name, condition_screen_names,
                                       fdr_threshold = 0.1, differential_threshold = 0,
                                       neg_type = "Negative", pos_type = "Positive",
-                                      expected_guides = 6) {
+                                      fdr_method = "BH", expected_guides = 6) {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_screen_name
@@ -640,21 +654,6 @@ call_significant_response <- function(scores, control_screen_name, condition_scr
     scores[[response_col]][sig & diffs < 0 & abs(diffs) > differential_threshold] <- neg_type
     scores[[response_col]][sig & diffs > 0 & abs(diffs) > differential_threshold] <- pos_type
   }
-  
-  # # Computes hit quality for the given gene pair
-  # for (name in condition_names) {
-  #   variance_cond <- scores[[paste0("variance_", name)]]
-  #   variance_cond <- 1 - scale_values(variance_cond)
-  #   variance_cont <- scores[[paste0("variance_", control_name)]]
-  #   variance_cont <- 1 - scale_values(variance_cont)
-  #   #effect <- scores[[paste0("mean_", name)]]
-  #   #effect <- scale_values(abs(effect))
-  #   n_guides <- scores[[paste0("n_", name)]]
-  #   n_guides[n_guides > expected_guides] <- expected_guides
-  #   n_guides <- scale_values(n_guides)
-  #   hit_quality <- rowMeans(data.frame(variance_cond, variance_cont, n_guides), na.rm = TRUE)
-  #   scores[[paste0("hit_quality_", name)]] <- hit_quality
-  # }
   
   # Explicitly returns scored data
   return(scores)

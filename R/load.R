@@ -250,6 +250,46 @@ split_guides_by_type <- function(guides) {
               "exonic_exonic" = pairwise_targeted))
 }
 
+#' Computes essential gene recovery AUC.
+#' 
+#' Computes area under the curve for ROC curves that measure how well each technical replicate
+#' recovers signal for essential-targeting guides and saves results to file. Only computes AUC
+#' for guides that target essential genes twice, guides that target two different essential 
+#' genes, or guides that target an essential gene and an intergenic region.
+#' 
+#' @param df LFC dataframe.
+#' @param screens List of screens generated with \code{add_screens}. 
+#' @param gene_col1 A column containing the first of two gene names. Intergenic regions must be 
+#'   denoted as "---" and non-targeted genes must be denoted as "None". 
+#' @param gene_col2 See above. 
+#' @param output_folder Folder to which essential gene QC results should be saved.
+#' @return All output is saved to the file "essential_PR_QC.txt" in the folder given by
+#'   output_folder.
+#' @export
+essential_lfc_qc <- function(df, screens, gene_col1, gene_col2, output_folder) {
+  
+  # Loads essential gene standard from internal data
+  essentials <- traver_core_essentials
+  
+  # Gets indices of essential-targeting guides
+  ind <- (df[[gene_col1]] %in% essentials & df[[gene_col2]] %in% essentials) |
+    (df[[gene_col1]] %in% essentials & df[[gene_col2]] == "---") |
+    (df[[gene_col2]] %in% essentials & df[[gene_col1]] == "---")
+  
+  # Gets PR curves for all essential genes and all technical replicates
+  output_file <- file.path(output_folder, "essential_PR_QC.txt")
+  sink(output_file)
+  if (sum(ind) > 0) {
+    for (screen in screens) {
+      for (rep in screen[["replicates"]]) {
+        roc <- PRROC::roc.curve(-df[[rep]], weights.class0 = as.numeric(ind), curve = TRUE)
+        cat(paste(rep, "essential-gene recovery AUC under ROC curve:", roc$auc, "\n")) 
+      }
+    }
+  }
+  sink()
+}
+
 #' Normalizes reads for given screens
 #' 
 #' Log2 and depth-normalizes reads between a given list of columns and a given

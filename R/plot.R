@@ -10,11 +10,18 @@
 #' @param df Reads or lfc dataframe.
 #' @param screens List of screens created with \code{add_screens}.
 #' @param output_folder Folder to output plots to. 
+#' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export 
-plot_rep_comparisons <- function(df, screens, output_folder) {
+plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png") {
   
   # Checks for input errors
   check_screen_params(df, screens)
+  
+  # Checks plot type and converts to lowercase
+  plot_type <- tolower(plot_type)
+  if (plot_type != "png" & plot_type != "pdf") {
+    stop("plot_type must be either png or pdf")
+  }
   
   # Builds dataframe of replicate PCCs
   pcc_df <- NULL
@@ -32,7 +39,7 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
         temp <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE)
         p <- temp[[1]]
         pcc <- temp[[2]]
-        file_name <- paste0(col1, "_vs_", col2, "_replicate_comparison.png")
+        file_name <- paste0(col1, "_vs_", col2, "_replicate_comparison.", plot_type)
         ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
         
         # Stores PCC in dataframe
@@ -63,13 +70,21 @@ plot_rep_comparisons <- function(df, screens, output_folder) {
 #' @param log_scale If true, log-normalizes data.
 #' @param pseudocount Pseudocounts to add to log-normalized data if specified (default 1).
 #' @param display_numbers Whether or not to include PCC values in heatmap (default TRUE).
+#' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export
-plot_screen_reads <- function(df, screens, output_folder, 
-                              log_scale = TRUE, pseudocount = 1,
-                              display_numbers = TRUE) {
+plot_reads_qc <- function(df, screens, output_folder,
+                          log_scale = TRUE, pseudocount = 1,
+                          display_numbers = TRUE, 
+                          plot_type = "png") {
   
   # Checks for input errors
   check_screen_params(df, screens)
+  
+  # Checks plot type and converts to lowercase
+  plot_type <- tolower(plot_type)
+  if (plot_type != "png" & plot_type != "pdf") {
+    stop("plot_type must be either png or pdf")
+  }
   
   # Plots read count histograms for all replicates of all screens and stores total reads 
   reads_df <- NULL
@@ -90,7 +105,7 @@ plot_screen_reads <- function(df, screens, output_folder,
       all_coverage <- c(all_coverage, screen[["target_coverage"]])
       all_cols <- c(all_cols, col)
       p <- plot_reads(df, col, log_scale, pseudocount)
-      file_name <- paste0(col, "_raw_reads_histogram.png")
+      file_name <- paste0(col, "_raw_reads_histogram.", plot_type)
       ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)  
       col_groups[i] <- screen_name
       i <- i + 1
@@ -114,7 +129,8 @@ plot_screen_reads <- function(df, screens, output_folder,
     ggplot2::scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
     ggthemes::theme_tufte(base_size = 20) +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(angle = 45, hjust = 1))
-  ggplot2::ggsave(file.path(output_folder, "total_reads.png"), plot = p, width = 10, height = 7, dpi = 300)
+  file_name <- paste0("total_reads.", plot_type)
+  ggplot2::ggsave(file.path(output_folder, file_name), plot = p, width = 10, height = 7, dpi = 300)
   
   # Gets colors for different screens
   screen_colors <- list(group = RColorBrewer::brewer.pal(length(unique(col_groups)), "Set1"))
@@ -139,7 +155,7 @@ plot_screen_reads <- function(df, screens, output_folder,
   pal <- grDevices::colorRampPalette(c("#7fbf7b", "#f7f7f7", "#af8dc3"))(n = length(breaks))
   
   # Plots heatmap of raw reads
-  filename <- file.path(output_folder, "screen_heatmap.png")
+  filename <- file.path(output_folder, paste0("screen_heatmap.", plot_type))
   pheatmap::pheatmap(cor_mat,
                      border_color = NA,
                      annotation_col = col_groups,
@@ -243,7 +259,8 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
 #' @return A ggplot object.
 #' @export
 plot_significant_response <- function(scores, control_name, condition_name,
-                                      loess = TRUE, neg_type = "Negative", pos_type = "Positive") {
+                                      loess = TRUE, neg_type = "Negative", 
+                                      pos_type = "Positive") {
   
   # Manually sets colors for plot
   scores <- scores[order(scores[[paste0("differential_", condition_name, "_vs_", control_name)]]),]
@@ -320,7 +337,8 @@ plot_significant_response <- function(scores, control_name, condition_name,
 #' @return A ggplot object.
 #' @export
 plot_significant_response_combn <- function(scores, condition_name, filter_names = NULL, 
-                                            loess = TRUE, neg_type = "Negative", pos_type = "Positive") {
+                                            loess = TRUE, neg_type = "Negative", 
+                                            pos_type = "Positive") {
   
   # If filter_names given, remove significant guides with the same effect as a control 
   # type of guides (e.g. DMSO) from plot
@@ -403,9 +421,16 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
 #'   passed to \code{call_significant_response} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
 #'   passed to \code{call_significant_response} (default "Positive").
+#' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export 
 plot_lfc <- function(scores, residuals, control_name, condition_name, output_folder,
-                     neg_type = "Negative", pos_type = "Positive") {
+                     neg_type = "Negative", pos_type = "Positive", plot_type = "png") {
+  
+  # Checks plot type and converts to lowercase
+  plot_type <- tolower(plot_type)
+  if (plot_type != "png" & plot_type != "pdf") {
+    stop("plot_type must be either png or pdf")
+  }
   
   # Makes output folder if it doesn't exist
   if (!dir.exists(output_folder)) {
@@ -467,7 +492,7 @@ plot_lfc <- function(scores, residuals, control_name, condition_name, output_fol
     }
     
     # Saves to file
-    file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".png")
+    file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".", plot_type)
     ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
   }
 }
@@ -486,9 +511,17 @@ plot_lfc <- function(scores, residuals, control_name, condition_name, output_fol
 #'   passed to \code{call_significant_response_combn} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
 #'   passed to \code{call_significant_response_combn} (default "Positive").
+#' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export 
 plot_lfc_combn <- function(scores, residuals, condition_name, output_folder,
-                           neg_type = "Negative", pos_type = "Positive") {
+                           neg_type = "Negative", pos_type = "Positive",
+                           plot_type = "png") {
+  
+  # Checks plot type and converts to lowercase
+  plot_type <- tolower(plot_type)
+  if (plot_type != "png" & plot_type != "pdf") {
+    stop("plot_type must be either png or pdf")
+  }
   
   # Makes output folder if it doesn't exist
   if (!dir.exists(output_folder)) {
@@ -566,7 +599,7 @@ plot_lfc_combn <- function(scores, residuals, condition_name, output_folder,
     }
       
     # Saves to file
-    file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".png")
+    file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".", plot_type)
     ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
   }
 }
