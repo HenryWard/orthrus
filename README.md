@@ -1,4 +1,4 @@
-# orthrus
+# Orthrus
 
 Orthrus is an R package for scoring combinatorial CRISPR screening data.
 
