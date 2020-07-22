@@ -155,7 +155,7 @@ plot_reads_qc <- function(df, screens, output_folder,
   pal <- grDevices::colorRampPalette(c("#7fbf7b", "#f7f7f7", "#af8dc3"))(n = length(breaks))
   
   # Plots heatmap of raw reads
-  filename <- file.path(output_folder, paste0("screen_heatmap.", plot_type))
+  filename <- file.path(output_folder, paste0("reads_heatmap.", plot_type))
   pheatmap::pheatmap(cor_mat,
                      border_color = NA,
                      annotation_col = col_groups,
