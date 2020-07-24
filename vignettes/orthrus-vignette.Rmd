@@ -1,0 +1,283 @@
+---
+title: "Orthrus-vignette"
+author: "Henry Ward"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Orthrus-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  eval = FALSE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+The Orthrus package contains all the computational tools you need to process, score and analyze combinatorial CRISPR screening data. 
+
+This document will guide you through the process of scoring a published combinatorial screening dataset. Key features of this dataset are summarized below, and in-depth descriptions of this dataset and how it was originally scored are available in [Gonatopoulos-Pournatzis et al.](https://www.nature.com/articles/s41587-020-0437-z). A more detailed walkthrough of how to apply Orthrus and analyze combinatorial screening data is forthcoming in a separate manuscript. 
+
+### Data description
+
+* Six combinatorial CRISPR screens across HAP1 and RPE1 cell lines
+* HAP1 screens include wild-type T12 and T18 data, and cells treated with the mTOR inhibitor Torin1 and a Torin1
+* RPE1 screens include wild-type T18 and T24
+* HAP1 and RPE1 T0 replicates for computing log fold-changes
+* CHyMErA library detailed in Gonatopoulos-Pournatzis et al. applied to all screens
+* Library contains dual-targeting guides that target the same gene twice, combinatorial-targeting guides that target paralog gene pairs, and single-targeting guides that target an exonic region and an intergenic region
+
+### Important publications
+
+Please refer to the following publications for more information on the CHyMErA experimental platform, CRISPR screens and scoring them, or alternative approaches for scoring combinatorial CRISPR screening data.
+
+* [Gonatopoulos-Pournatzis et al., 2020](https://www.nature.com/articles/s41587-020-0437-z)
+* [Aregger et al., 2020](https://www.nature.com/articles/s42255-020-0211-z)
+* [Zamanighomi et al., 2020](https://link.springer.com/article/10.1186/s13059-019-1745-9)
+* [Hart et al., 2017](https://www.g3journal.org/content/7/8/2719.abstract)
+* [Hart et al., 2015](https://www.sciencedirect.com/science/article/pii/S0092867415014956)
+* [Shalem et al., 2014](https://science.sciencemag.org/content/343/6166/84)
+* [Wang et al., 2014](https://science.sciencemag.org/content/343/6166/80)
+
+### Prerequisites
+
+To follow this vignette, familiarity with CRISPR screening technology is strongly recommended. Familiarity with combinatorial CRISPR screening platforms or other ways to score CRISPR screening data is recommended, but not required.
+
+The only additional package needed to follow this vignette is ggplot2.
+
+```{r}
+install.packages("ggplot2")
+```
+
+## Walkthrough
+
+### Setting up
+
+Load packages.
+
+```{r}
+library(orthrus)
+library(ggplot2)
+```
+
+Create output folders.
+
+```{r}
+# Renames dataset
+df <- chymera_paralog
+
+# Makes output folders if nonexistent
+output_folder <- file.path("output", "vignette")
+qc_folder <- file.path(output_folder, "qc")
+lfc_folder <- file.path(qc_folder, "lfc_plots")
+if (!dir.exists(output_folder)) { dir.create(output_folder, recursive = TRUE) }
+if (!dir.exists(qc_folder)) { dir.create(qc_folder) }
+if (!dir.exists(lfc_folder)) { dir.create(lfc_folder) }
+```
+
+Call the `add_screen` function to build up a list of screens with names and corresponding technical replicates, starting with T0 replicates. Also add the HAP1 screens to the list and associate them with the HAP1 T0 screen for LFC computation downstream. 
+
+```{r}
+screens <- add_screen(name = "HAP1_T0", replicates = "HAP1.T0")
+screens <- add_screen(screens, "RPE1_T0", "RPE1.T0")
+screens <- add_screen(screens, "HAP1_T12", c("HAP1.T12A", "HAP1.T12B", "HAP1.T12C"), "HAP1_T0")
+screens <- add_screen(screens, "HAP1_T18", c("HAP1.T18A", "HAP1.T18B", "HAP1.T18C"), "HAP1_T0")
+screens <- add_screen(screens, "Torin_T12", c("HAP1.Torin.T12A", "HAP1.Torin.T12B", "HAP1.Torin.T12C"), "HAP1_T0")
+screens <- add_screen(screens, "Torin_T18", c("HAP1.Torin.T18A", "HAP1.Torin.T18B", "HAP1.Torin.T18C"), "HAP1_T0")
+```
+
+### Processing and QC
+
+The first thing we want to do is make quality-control plots for raw read counts with the function `plot_reads_qc`. Output these to the previously-created QC folder. 
+
+```{r}
+plot_reads_qc(df, screens, qc_folder)
+```
+
+Now we need to normalize each screen in three different ways: 
+
+1. To their respective T0 screens by computing log fold-changes (LFCs)
+2. To the respective depth of each technical replicate
+3. By removing guides that are too lowly or highly-expressed at T0
+
+The function `normalize_screens` automatically performs all of these normalization steps. The function infers which columns of `df` need to be normalized to which T0 screens based on the `normalize_name` parameter of each screen in `screens` (screens without this optional parameter will not be normalized to other screens). Log-scaling and depth-normalization is performed on each screen regardless of the `normalize_name` parameter. For example, after normalization T0 columns in `df` will contain log-scaled, depth-normalized read counts, whereas columns from later timepoints will contain depth-normalized LFCs compared to their respective T0s. 
+
+```{r}
+df <- normalize_screens(df, screens, filter_names = c("HAP1_T0", "RPE1_T0"), min_reads = 30)
+```
+
+Make detailed QC plots for LFC data by calling the `plot_lfc_qc` function.
+
+```{r}
+plot_lfc_qc(df, screens, qc_folder)
+```
+
+Compute the AUC under the ROC curve for all essential-targeting guides with the function `essential_lfc_qc`, which outputs results to the file "essential_PR_QC.txt" in the given QC folder. AUC values closer to 1 are typically better, but for this specialized library we expect values from 0.6-0.7. 
+
+```{r}
+essential_lfc_qc(df, screens, "Gene.symbol1", "Gene.symbol2", qc_folder)
+```
+
+Ensure that gene pairs for intergenic-targeting guides are differentiated from gene pairs where both guides target the same gene. Intergenic regions in this dataset are wrongly denoted for exonic-exonic dual-targeting guides by the symbol "---", which we will change to "None".
+
+```{r}
+# Converts exonic-exonic pairs to more accurate names. Genes with "---" target intergenic regions, 
+# and genes with "None" target nothing
+ind <- (df$Cas9.Guide.Type == "exonic" & df$Cpf1.Guide.Type == "exonic") &
+  (df$Gene.symbol1 == "---" | df$Gene.symbol2 == "---")
+temp <- df$Gene.symbol1 == "---" & ind
+if (sum(temp)) {
+  df$Gene.symbol1[temp] <- "None"
+}
+temp <- df$Gene.symbol2 == "---" & ind
+if (sum(temp)) {
+  df$Gene.symbol2[temp] <- "None"
+}
+```
+
+The last thing we need to do before scoring data is parse it into a different structure and split guides by their type. The reason we do this involves the core assumption that orientation (whether Cas9 targets gene A and Cas12a targets gene B, or vice versa) matters for scoring combinatorial data. Because of this, to make scoring easier for all gene pairs we want to group their guides across each orientation together into a single list ordered by guide IDs. To parse this data, we call the following functions in order:
+
+1. `unique_gene_pairs` gets all unique gene pairs in the dataset, passing in the names of the two gene name columns in the dataset
+2. `retrieve_guides_by_label` gets all guides associated with unique gene pairs for every screen according to given gene labels in the columns "Cas9.Guide.Type" and "Cpf1.Guide.Type". These labels must be one of "exonic", "intergenic" or "NT" for non-targeting controls. This also appends guide sequences to use as guide IDs (necessary for scoring data with moderated t-testing downstream). The order of parameters matters here - in the code below, "Cas9.Guide.Type" and "Cas9.Guide" are mapped to genes in "Gene.symbol1", and similarly for the other parameters mapped to "Gene.symbol2".
+3. `split_guides_by_type` splits all guides according to whether they target the same gene twice ("single_gene_dual_targeted"), a single gene and an intergenic region ("exonic_intergenic"), or two different genes ("exonic_exonic"). Different types of guides necessitate different scoring methods, which are explained in more detail below. 
+
+```{r}
+# Gets gene names and guide counts
+gene_pairs <- unique_gene_pairs(df, "Gene.symbol1", "Gene.symbol2")
+guides <- retrieve_guides_by_label(df, gene_pairs, screens, 
+                                   "Gene.symbol1", "Gene.symbol2", 
+                                   "Cas9.Guide.Type", "Cpf1.Guide.Type",
+                                   "Cas9.Guide", "Cpf1.Guide")
+
+# Separates single-targeting and dual-targeting guides
+temp <- split_guides_by_type(guides)
+dual <- temp[["single_gene_dual_targeted"]]
+single <- temp[["exonic_intergenic"]]
+paralogs <- temp[["exonic_exonic"]]
+```
+
+### Dual-targeted scoring
+
+Now that we've processed our data, we need to score it. Thankfully, Orthrus makes this step relatively painless. The most important thing to remember during scoring is that different types of guides need to be scored against different null models. Here, we will detail how to **score data in one or more conditions against a control condition.** The forthcoming scoring manuscript will detail this process. 
+
+The data in our library that lends itself to this type of comparison is the dual-targeting data contained in the `dual` object. We want to compare untreated screens to screens treated with Torin1. To do this, we pass the data, screens, screen names we want to compare to each other (the control screen name comes first), and the type of testing we want to run into the `score_conditions_vs_control` function. 
+
+The scoring function outputs a named list containing two elements. The first element, `scored_data`, is a dataframe of scored data for all gene pairs. The second element, `residuals`, is a dataframe of per-guide effects and residual values for all guides. The scored data is used for hit-calling through the function `call_significant_response`, as well as final analyses, and the residuals are used to make guide-level plots of differential LFC effects. 
+
+``` {r}
+temp <- score_conditions_vs_control(dual, screens, "HAP1_T18", "Torin_T18", 
+                                    test = "moderated-t", loess = TRUE,
+                                    return_residuals = FALSE)
+dual_scores <- temp[["scored_data"]]
+residuals <- temp[["residuals"]]
+```
+
+After scoring data, we want to call hits according to user-specific thresholds on FDR and effect size, naming negative effects and positive effects according to the type of screen performed, using the `call_significant_response` function. The effect size threshold, `differential_threshold`, is based on the absolute value of the effect. Here, only guides with abs(effect) < 0.5 and fdr < 0.1 will be called as significant hits.
+
+```{r}
+dual_scores <- call_significant_response(dual_scores1, "HAP1_T18", "Torin_T18",
+                                         neg_type = "Sensitizer", pos_type = "Suppressor",
+                                         fdr_threshold = 0.1, differential_threshold = 0.5)
+```
+
+We also want to make lfc plots for all significant hits, and output those to a new subfolder of the QC folder.
+
+```{r}
+plot_lfc(dual_scores, residuals, "HAP1_T18", "Torin_T18", file.path(lfc_folder, "dual_lfc_t18"),
+         neg_type = "Sensitizer", pos_type = "Suppressor")
+```
+
+Finally, to finish scoring this data we will generate pretty plots describing differential effects and save both those and the scored data to file. Since these plotting functions only return one plot, they return a ggplot object instead of directly saving to file. Moreover, because we renamed the negative and positive effect type labels above, we have to pass our custom labels into the plotting function as well.
+
+```{r}
+# Plots drug response
+p <- plot_significant_response(dual_scores, "HAP1_T18", "Torin_T18", neg_type = "Sensitizer", pos_type = "Suppressor")
+ggsave(file.path(output_folder, "torin_vs_hap1_t18.png"), width = 10, height = 7, dpi = 300)
+
+# Writes data to file
+write.table(dual_scores, file.path(output_folder, "dual_targeted_gene_calls_t18.tsv"), sep = "\t",
+            row.names = FALSE, col.names = TRUE, quote = FALSE)
+```
+
+### Combinatorial scoring
+
+Scoring combinatorial data for the paralog section of the library is very similar to scoring dual-targeted data, but requires the use of a separate null model that derives expected effects from single-gene knockout effects. Accordingly, a different set of functions with a nearly identical interface is used to **score combinatorial data against a derived null model.** 
+
+But first, we will remove non-targeting guides from the data.
+
+```{r}
+nt_ind <- unlist(lapply(paralogs, function(x) x[["gene1"]] == "NT" | x[["gene2"]] == "NT"))
+paralogs <- paralogs[!nt_ind]
+```
+
+Scoring the data proceeds in much the same way as for conditions against a control. The only major differences here are that we also pass in single-targeting guides to derive a null model from as well as a list of screens to score separately (with no associated control).
+
+```{r}
+screens_to_score <- c("HAP1_T12", "HAP1_T18", "Torin_T12", "Torin_T18")
+temp <- score_combn_vs_single(paralogs, single, screens, screens_to_score, test = "moderated-t")
+paralog_scores <- paralog_scores[["scored_data"]]
+paralog_residuals <- temp[["residuals"]]
+paralog_scores <- call_significant_response_combn(paralog_scores, screens_to_score,
+                                                  neg_type = "Negative GI", pos_type = "Positive GI")
+
+# Plots LFC of all hits
+residual_folder <- file.path(lfc_folder, "HAP1_T18_combn")
+plot_lfc_combn(paralog_scores, paralog_residuals, "HAP1_T18", residual_folder,
+               neg_type = "Negative GI", pos_type = "Positive GI")
+residual_folder <- file.path(lfc_folder, "Torin_T18_combn")
+plot_lfc_combn(paralog_scores, paralog_residuals, "Torin_T18", residual_folder,
+               neg_type = "Negative GI", pos_type = "Positive GI")
+```
+
+Make summary plots for different screens.
+
+```{r}
+p <- plot_significant_response_combn(paralog_scores, "HAP1_T18", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
+ggsave(file.path(output_folder, "paralog_hap1_t18.png"), width = 10, height = 7, dpi = 300)
+```
+
+Even though paralog data is not scored against a control, we still want to compare treated screens against untreated screens in some way. To do that visually, make plots that exclude hits which are significant in a given list of control screens. 
+
+```{r}
+p <- plot_significant_response_combn(paralog_scores, "Torin_T18", filter_name = "HAP1_T18", loess = TRUE, neg_type = "Sensitizer", pos_type = "Suppressor")
+ggsave(file.path(output_folder, "paralog_torin_t18.png"), width = 10, height = 7, dpi = 300)
+```
+
+Finally, we save our scored data to file.
+
+```{r}
+write.table(paralog_scores, file.path(output_folder, "paralog_gene_calls.tsv"), sep = "\t",
+            row.names = FALSE, col.names = TRUE, quote = FALSE)
+```
+
+### Single-targeted scoring
+
+Orthrus also provides a way to score the effect of single-targeted genes (for exonic-intergenic guides that also comprise the null model for combinatorial scoring). Conceptually, this scoring method is the same as the condition vs. control comparison for dual-targeted guides, but is run separately on each orientation. In other words, for our example dataset we can also score conditions vs. controls for Cas9 guides separately from Cas12a guides. The interface to this the same as for dual-targeted scoring, but we provide an additional flag to tell Orthrus to score orientations separately: `orientation=TRUE`. We also pass in the single-targeting guides and not the dual-targeting guides.
+
+```{r}
+single_scores <- score_conditions_vs_control(single, screens, "HAP1_T18", c("Torin_T18"), 
+                                             orientation = TRUE)
+
+# Only keeps scores from Cas12a guides 
+single_scores <- single_scores[[2]]
+to_keep <- !is.na(single_scores$gene1)
+cat(paste("Removing", nrow(single_scores) - sum(to_keep), "sparse single-targeting genes\n"))
+single_scores <- single_scores[to_keep,]
+
+# Calls significant hits
+single_scores <- call_significant_response(single_scores, "HAP1_T18", c("Torin_T18"),
+                                           neg_type = "Sensitizer", pos_type = "Suppressor",
+                                           fdr_threshold = 0.2, differential_threshold = 0.5)
+```
+
+Because the library design for the published experiment contains only a few Cas9 guides per gene pair, we're only interested in scoring the effect of Cas12a guides. So, we only keep the second scored dataframe and look at those effects downstream, after removing gene pairs with too few remaining guides post-filtering.
+
+### Summary
+
+This concludes a brief walkthrough of how to use Orthrus to score combinatorial CRISPR screening data. We detailed the process of comparing a drug treatment screen to a control screen across several different types of combinatorial guides. 
+
+However, we left out arguably the most important step: manual sanity-checking and analysis of individual output plots, metrics and scored data. We strongly advise that users check all output files to investigate their data's quality, and revise data processing or analysis steps accordingly (e.g. filtering out T0 reads more strictly, tightening differential effect and FDR thresholds, manually removing problematic guides, ensuring that positive controls are called as significant hits).

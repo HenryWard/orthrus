@@ -133,7 +133,15 @@ plot_reads_qc <- function(df, screens, output_folder,
   ggplot2::ggsave(file.path(output_folder, file_name), plot = p, width = 10, height = 7, dpi = 300)
   
   # Gets colors for different screens
-  screen_colors <- list(group = RColorBrewer::brewer.pal(length(unique(col_groups)), "Set1"))
+  screen_colors <- NA
+  n_colors <- length(unique(col_groups))
+  if (n_colors < 10) {
+    screen_colors <- list(group = RColorBrewer::brewer.pal(length(unique(col_groups)), "Set1"))
+  } else {
+    pal <- RColorBrewer::brewer.pal(9, "Set1")
+    pal <- grDevices::colorRampPalette(pal)(n_colors)
+    screen_colors <- list(group = pal)
+  }
   names(screen_colors$group) <- unique(col_groups)
   
   # Gets PCCs for heatmap
@@ -462,7 +470,7 @@ plot_lfc <- function(scores, residuals, control_name, condition_name, output_fol
     gene1 <- scores$gene1[ind]
     gene2 <- scores$gene2[ind]
     x_label <- paste0("Guides")
-    y_label <- paste0("Average LFC across replicates")
+    y_label <- paste0("Average differential LFC across replicates")
     
     # Adds ID column for plotting
     df$ID <- paste("Guide", 1:nrow(df))
@@ -565,7 +573,7 @@ plot_lfc_combn <- function(scores, residuals, condition_name, output_folder,
     gene1 <- scores$gene1[ind]
     gene2 <- scores$gene2[ind]
     x_label <- paste0("Guides")
-    y_label <- paste0("Average LFC across replicates")
+    y_label <- paste0("Average differential LFC across replicates")
     
     # Adds ID column for plotting
     df$ID <- nrow(df):1
