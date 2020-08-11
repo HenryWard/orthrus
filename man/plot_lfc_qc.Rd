@@ -4,7 +4,13 @@
 \alias{plot_lfc_qc}
 \title{Plot replicate comparisons.}
 \usage{
-plot_lfc_qc(df, screens, output_folder, plot_type = "png")
+plot_lfc_qc(
+  df,
+  screens,
+  output_folder,
+  plot_type = "png",
+  display_numbers = TRUE
+)
 }
 \arguments{
 \item{df}{Reads or lfc dataframe.}
@@ -14,6 +20,8 @@ plot_lfc_qc(df, screens, output_folder, plot_type = "png")
 \item{output_folder}{Folder to output plots to.}
 
 \item{plot_type}{Type of plot to output, one of "png" or "pdf" (default "png").}
+
+\item{display_numbers}{Whether or not to include PCC values in heatmap (default TRUE).}
 }
 \description{
 Plots replicate comparisons for all replicates in a list of screens and outputs

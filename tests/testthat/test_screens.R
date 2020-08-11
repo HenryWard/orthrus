@@ -1,5 +1,5 @@
 context("Screen utility functions")
-library(chymeraR)
+library(orthrus)
 
 test_that("add_screen fails on invalid input", {
   expect_error(add_screen(name = NULL, replicates = c("Test1", "Test2")))

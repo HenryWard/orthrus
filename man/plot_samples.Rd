@@ -34,8 +34,9 @@ plot_samples(
 (default FALSE).}
 }
 \value{
-A list of two elements. The first is a ggplot object and the
-  second is the correlation between xcol and ycol, if print_cor = TRUE.
+A list of three elements. The first is a ggplot object, the
+  second is the correlation between xcol and ycol, and the third is
+  the Spearman correlation between xcol and ycol.
 }
 \description{
 Pretty-plots comparisons between two samples in a scatterplot.

@@ -11,8 +11,10 @@
 #' @param screens List of screens created with \code{add_screens}.
 #' @param output_folder Folder to output plots to. 
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
+#' @param display_numbers Whether or not to include PCC values in heatmap (default TRUE).
 #' @export 
-plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png") {
+plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png",
+                        display_numbers = TRUE) {
   
   # Checks for input errors
   check_screen_params(df, screens)
@@ -24,7 +26,7 @@ plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png") {
   }
   
   # Builds dataframe of replicate PCCs
-  pcc_df <- NULL
+  cor_df <- NULL
   
   # Compares replicates across all screens
   for (screen in screens) {
@@ -39,24 +41,43 @@ plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png") {
         temp <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE)
         p <- temp[[1]]
         pcc <- temp[[2]]
+        scc <- temp[[3]]
         file_name <- paste0(col1, "_vs_", col2, "_replicate_comparison.", plot_type)
         ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
         
         # Stores PCC in dataframe
-        if (is.null(pcc_df)) {
-          pcc_df <- data.frame(rep1 = col1, rep2 = col2, pcc = pcc,
+        if (is.null(cor_df)) {
+          cor_df <- data.frame(rep1 = col1, rep2 = col2, pcc = pcc, scc = scc,
                                stringsAsFactors = FALSE)
         } else {
-          pcc_df <- rbind(pcc_df, c(col1, col2, pcc))
+          cor_df <- rbind(cor_df, c(col1, col2, pcc, scc))
         }
       }   
     }
   }
   
   # Writes PCCs to file
-  pcc_file <- file.path(output_folder, "replicate_pcc.tsv")
-  utils::write.table(pcc_df, pcc_file, quote = FALSE, sep = "\t",
+  cor_file <- file.path(output_folder, "replicate_cor.tsv")
+  utils::write.table(cor_df, cor_file, quote = FALSE, sep = "\t",
                      row.names = FALSE, col.names = TRUE)
+  
+  # Gets sample groups
+  all_cols <- c()
+  col_groups <- c()
+  i <- 1
+  for (screen_name in names(screens)) {
+    screen <- screens[[screen_name]]
+    for (col in screen[["replicates"]]) {
+      all_cols <- c(all_cols, col)
+      col_groups[i] <- screen_name
+      i <- i +1
+    }
+  }
+  
+  # Plots heatmap of log-scaled read counts
+  df <- df[,all_cols]
+  heatmap_file <- file.path(output_folder, paste0("lfc_heatmap.", plot_type))
+  plot_heatmap(df, col_groups, heatmap_file, display_numbers)
 }
 
 #' Plot read counts for a screen.
@@ -132,46 +153,17 @@ plot_reads_qc <- function(df, screens, output_folder,
   file_name <- paste0("total_reads.", plot_type)
   ggplot2::ggsave(file.path(output_folder, file_name), plot = p, width = 10, height = 7, dpi = 300)
   
-  # Gets colors for different screens
-  screen_colors <- NA
-  n_colors <- length(unique(col_groups))
-  if (n_colors < 10) {
-    screen_colors <- list(group = RColorBrewer::brewer.pal(length(unique(col_groups)), "Set1"))
-  } else {
-    pal <- RColorBrewer::brewer.pal(9, "Set1")
-    pal <- grDevices::colorRampPalette(pal)(n_colors)
-    screen_colors <- list(group = pal)
-  }
-  names(screen_colors$group) <- unique(col_groups)
-  
-  # Gets PCCs for heatmap
+  # Log-scales read counts if specified
   df <- df[,all_cols]
   if (log_scale) {
     for (col in colnames(df)) {
       df[,col] <- log2(df[,col] + 1)
     }
   }
-  cor_mat <- data.matrix(stats::cor(df))
   
-  # Gets annotation for heatmap
-  col_groups <- data.frame("Screen" = col_groups)
-  rownames(col_groups) <- colnames(df)
-  colnames(cor_mat) <- colnames(df)
-  
-  # Gets color for heatmap values
-  breaks <- seq(-1, 1, by = (1/150))
-  pal <- grDevices::colorRampPalette(c("#7fbf7b", "#f7f7f7", "#af8dc3"))(n = length(breaks))
-  
-  # Plots heatmap of raw reads
-  filename <- file.path(output_folder, paste0("reads_heatmap.", plot_type))
-  pheatmap::pheatmap(cor_mat,
-                     border_color = NA,
-                     annotation_col = col_groups,
-                     annotation_colors = screen_colors,
-                     display_numbers = display_numbers,
-                     color = pal, 
-                     breaks = breaks,
-                     filename = filename)
+  # Plots heatmap of log-scaled read counts
+  heatmap_file <- file.path(output_folder, paste0("reads_heatmap.", plot_type))
+  plot_heatmap(df, col_groups, heatmap_file, display_numbers)
 }
 
 #' Plot read counts.
@@ -211,16 +203,17 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
 #' @param color_lab Name of color legend (optional, defaults to color_col).
 #' @param print_cor If true, prints Pearson correlation between columns 
 #'   (default FALSE).
-#' @return A list of two elements. The first is a ggplot object and the
-#'   second is the correlation between xcol and ycol, if print_cor = TRUE.
+#' @return A list of three elements. The first is a ggplot object, the
+#'   second is the correlation between xcol and ycol, and the third is
+#'   the Spearman correlation between xcol and ycol.
 plot_samples <- function(df, xcol, ycol, xlab, ylab, 
                          color_col = NULL, color_lab = NULL,
                          print_cor = FALSE) {
   
-  # Optionally prints Pearson correlation between given columns
-  pcc <- NA
+  # Computes correlations and optionally prints Pearson correlation
+  pcc <- stats::cor(df[[xcol]], df[[ycol]])
+  scc <- stats::cor(df[[xcol]], df[[ycol]], method = "spearman")
   if (print_cor) {
-    pcc <- stats::cor(df[[xcol]], df[[ycol]])
     cat(paste("Pearson correlation between", xcol, "and", ycol, ":", pcc, "\n"))
   }
   
@@ -245,7 +238,54 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
       ggplot2::ylab(ylab) +
       ggthemes::theme_tufte(base_size = 20)
   }
-  return(list(p, pcc))
+  return(list(p, pcc, scc))
+}
+
+#' Plots Pearson correlation heatmap.
+#' 
+#' Plots heatmap of Pearson correlations for a dataframe with labels
+#' for groups of samples and a blue-yellow color scheme.
+#' 
+#' @param df Reads or lfc dataframe
+#' @param col_groups List of grouping labels for each column in df. 
+#' @param filename Output filename for plot. 
+#' @param display_numbers Whether or not to include PCC values in heatmap (default TRUE).
+#' @return Writes plot to file with no return value.
+plot_heatmap <- function(df, col_groups, filename, display_numbers) {
+  
+  # Gets colors for different screens
+  screen_colors <- NA
+  n_colors <- length(unique(col_groups))
+  if (n_colors < 10) {
+    screen_colors <- list(group = RColorBrewer::brewer.pal(length(unique(col_groups)), "Set1"))
+  } else {
+    pal <- RColorBrewer::brewer.pal(9, "Set1")
+    pal <- grDevices::colorRampPalette(pal)(n_colors)
+    screen_colors <- list(group = pal)
+  }
+  names(screen_colors$group) <- unique(col_groups)
+  
+  # Gets PCCs for heatmap
+  cor_mat <- data.matrix(stats::cor(df))
+  
+  # Gets annotation for heatmap
+  col_groups <- data.frame("Screen" = col_groups)
+  rownames(col_groups) <- colnames(df)
+  colnames(cor_mat) <- colnames(df)
+  
+  # Gets color for heatmap values
+  breaks <- seq(-1, 1, by = (1/150))
+  pal <- grDevices::colorRampPalette(c("#7fbf7b", "#f7f7f7", "#af8dc3"))(n = length(breaks))
+  
+  # Plots heatmap of raw reads to file
+  pheatmap::pheatmap(cor_mat,
+                     border_color = NA,
+                     annotation_col = col_groups,
+                     annotation_colors = screen_colors,
+                     display_numbers = display_numbers,
+                     color = pal, 
+                     breaks = breaks,
+                     filename = filename)
 }
 
 #' Plots drug response for scored data.

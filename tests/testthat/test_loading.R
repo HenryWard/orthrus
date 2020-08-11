@@ -1,5 +1,5 @@
 context("Data loading functions")
-library(chymeraR)
+library(orthrus)
 
 # We test a plotting function because it's one of two possible functions called at the
 # beginning of the pipeline

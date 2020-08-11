@@ -1,4 +1,4 @@
 library(testthat)
-library(chymeraR)
+library(orthrus)
 
-test_check("chymeraR")
+test_check("orthrus")

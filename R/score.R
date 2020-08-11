@@ -470,8 +470,8 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       null2 <- null2[!is.na(null2)]
       
       # Skips if too few guides
-      if (length(null1) < 2 | length(null2) < 2 |
-          length(combn1) < 2 | length(combn2) < 2) {
+      if (length(null1) < min_guides | length(null2) < min_guides |
+          length(combn1) < min_guides | length(combn2) < min_guides) {
         if (verbose) {
           cat(paste(gene1, "and", gene2, "in", name, "skipped because of too few guides\n"))
         }
