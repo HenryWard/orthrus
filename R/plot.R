@@ -293,22 +293,22 @@ plot_heatmap <- function(df, col_groups, filename, display_numbers) {
 #' Pretty-plots response for data which does not use a derived null model (e.g. for directly
 #' comparing drug response to DMSO response). Assumes that data was scored by 
 #' \code{score_conditions_vs_control} and significant effects were called by 
-#' \code{call_significant_response}.
+#' \code{call_condition_hits}.
 #' 
-#' @param scores Dataframe of scores returned from \code{call_significant_response}.
-#' @param control_name Name of control passed to \code{call_significant_response}.
-#' @param condition_name Name of condition passed to \code{call_significant_response}.
+#' @param scores Dataframe of scores returned from \code{call_condition_hits}.
+#' @param control_name Name of control passed to \code{call_condition_hits}.
+#' @param condition_name Name of condition passed to \code{call_condition_hits}.
 #' @param loess If true and data was loess-normalized, plots loess null model instead
 #'   (default TRUE).
 #' @param neg_type Label for significant effects with a negative differential effect
-#'   passed to \code{call_significant_response} (default "Negative").
+#'   passed to \code{call_condition_hits} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
-#'   passed to \code{call_significant_response} (default "Positive").
+#'   passed to \code{call_condition_hits} (default "Positive").
 #' @return A ggplot object.
 #' @export
-plot_significant_response <- function(scores, control_name, condition_name,
-                                      loess = TRUE, neg_type = "Negative", 
-                                      pos_type = "Positive") {
+plot_condition_response <- function(scores, control_name, condition_name,
+                                    loess = TRUE, neg_type = "Negative", 
+                                    pos_type = "Positive") {
   
   # Manually sets colors for plot
   scores <- scores[order(scores[[paste0("differential_", condition_name, "_vs_", control_name)]]),]
@@ -369,24 +369,24 @@ plot_significant_response <- function(scores, control_name, condition_name,
 #' Pretty-plots response for data which uses a derived null model (e.g. for comparing
 #' dual-gene knockout effects to a multiplicative null model derived from single-gene
 #' effects). Assumes that data was scored by \code{score_combn_vs_single} and 
-#' significant effects were called by \code{call_significant_response_combn}.
+#' significant effects were called by \code{call_combn_hits}.
 #' 
-#' @param scores Dataframe of scores returned from \code{call_significant_response_combn}.
-#' @param condition_name Name of condition passed to \code{call_significant_response_combn}.
+#' @param scores Dataframe of scores returned from \code{call_combn_hits}.
+#' @param condition_name Name of condition passed to \code{call_combn_hits}.
 #' @param filter_names If a list of column names is given, calls points as non-significant 
 #'   if they are significant in the provided columsn (e.g. to remove points significant 
 #'   in control screens; default NULL).
 #' @param loess If true and data was loess-normalized, plots loess null model instead
 #'   (default TRUE).
 #' @param neg_type Label for significant effects with a negative differential effect
-#'   passed to \code{call_significant_response_combn} (default "Negative").
+#'   passed to \code{call_combn_hits} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
-#'   passed to \code{call_significant_response_combn} (default "Positive").
+#'   passed to \code{call_combn_hits} (default "Positive").
 #' @return A ggplot object.
 #' @export
-plot_significant_response_combn <- function(scores, condition_name, filter_names = NULL, 
-                                            loess = TRUE, neg_type = "Negative", 
-                                            pos_type = "Positive") {
+plot_combn_response <- function(scores, condition_name, filter_names = NULL, 
+                                loess = TRUE, neg_type = "Negative", 
+                                pos_type = "Positive") {
   
   # If filter_names given, remove significant guides with the same effect as a control 
   # type of guides (e.g. DMSO) from plot
@@ -457,22 +457,22 @@ plot_significant_response_combn <- function(scores, condition_name, filter_names
 #' Plot LFCs for all gene pairs.
 #' 
 #' Plots replicate comparisons for all replicates in a list of screens and outputs
-#' plots to a given folder. Works for data returned from \code{call_significant_response}.
+#' plots to a given folder. Works for data returned from \code{call_condition_hits}.
 #' 
-#' @param scores Dataframe of scores returned from \code{call_significant_response}.
+#' @param scores Dataframe of scores returned from \code{call_condition_hits}.
 #' @param residuals Residuals returned with the return_residuals argument set to true
-#'   from \code{call_significant_response}.
-#' @param control_name Name of control passed to \code{call_significant_response}.
-#' @param condition_name Name of condition passed to \code{call_significant_response}.
+#'   from \code{call_condition_hits}.
+#' @param control_name Name of control passed to \code{call_condition_hits}.
+#' @param condition_name Name of condition passed to \code{call_condition_hits}.
 #' @param output_folder Folder to output plots to. 
 #' @param neg_type Label for significant effects with a negative differential effect
-#'   passed to \code{call_significant_response} (default "Negative").
+#'   passed to \code{call_condition_hits} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
-#'   passed to \code{call_significant_response} (default "Positive").
+#'   passed to \code{call_condition_hits} (default "Positive").
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export 
-plot_lfc <- function(scores, residuals, control_name, condition_name, output_folder,
-                     neg_type = "Negative", pos_type = "Positive", plot_type = "png") {
+plot_condition_lfc <- function(scores, residuals, control_name, condition_name, output_folder,
+                               neg_type = "Negative", pos_type = "Positive", plot_type = "png") {
   
   # Checks plot type and converts to lowercase
   plot_type <- tolower(plot_type)
@@ -548,20 +548,20 @@ plot_lfc <- function(scores, residuals, control_name, condition_name, output_fol
 #' Plot LFCs for all gene pairs.
 #' 
 #' Plots replicate comparisons for all replicates in a list of screens and outputs
-#' plots to a given folder. Works for data returned from \code{call_significant_response_combn}.
+#' plots to a given folder. Works for data returned from \code{call_combn_hits}.
 #' 
-#' @param scores Dataframe of scores returned from \code{call_significant_response_combn}.
+#' @param scores Dataframe of scores returned from \code{call_combn_hits}.
 #' @param residuals Residuals returned with the return_residuals argument set to true
-#'   from \code{call_significant_response_combn}.
-#' @param condition_name Name of condition passed to \code{call_significant_response_combn}.
+#'   from \code{call_combn_hits}.
+#' @param condition_name Name of condition passed to \code{call_combn_hits}.
 #' @param output_folder Folder to output plots to. 
 #' @param neg_type Label for significant effects with a negative differential effect
-#'   passed to \code{call_significant_response_combn} (default "Negative").
+#'   passed to \code{call_combn_hits} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
-#'   passed to \code{call_significant_response_combn} (default "Positive").
+#'   passed to \code{call_combn_hits} (default "Positive").
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export 
-plot_lfc_combn <- function(scores, residuals, condition_name, output_folder,
+plot_combn_lfc <- function(scores, residuals, condition_name, output_folder,
                            neg_type = "Negative", pos_type = "Positive",
                            plot_type = "png") {
   

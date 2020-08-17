@@ -57,6 +57,5 @@ model derived from single-gene effects (e.g. for comparing paralog double-knocko
 to single-knockouts for each paralogous gene). Do NOT use this function if you 
 would like to directly compare conditions against a control. In that case, call 
 \code{score_conditions_vs_control} instead. After running this function, pass the 
-resulting dataframe to \code{call_significant_response_dual} to call significant 
-effects.
+resulting dataframe to \code{call_combn_hits} to call significant effects.
 }

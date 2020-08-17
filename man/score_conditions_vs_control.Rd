@@ -60,5 +60,5 @@ Scores guides for any number of condition screens against a control screen
 this function if you would like to compare guides against a null model 
 derived from single-gene effects. In that case, call \code{score_combn_vs_single}
 instead. After running this function, pass the resulting dataframe to 
-\code{call_significant_response} to call significant effects.
+\code{call_condition_hits} to call significant effects.
 }

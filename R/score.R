@@ -14,7 +14,7 @@ scale_values <- function(x) {
 #' this function if you would like to compare guides against a null model 
 #' derived from single-gene effects. In that case, call \code{score_combn_vs_single}
 #' instead. After running this function, pass the resulting dataframe to 
-#' \code{call_significant_response} to call significant effects.
+#' \code{call_condition_hits} to call significant effects.
 #' 
 #' @param guides A list of guides returned from \code{retrieve_guides_by_label} or 
 #'   from an entry of \code{split_guides_by_type}.
@@ -250,8 +250,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
 #' to single-knockouts for each paralogous gene). Do NOT use this function if you 
 #' would like to directly compare conditions against a control. In that case, call 
 #' \code{score_conditions_vs_control} instead. After running this function, pass the 
-#' resulting dataframe to \code{call_significant_response_dual} to call significant 
-#' effects.
+#' resulting dataframe to \code{call_combn_hits} to call significant effects.
 #' 
 #' @param combn_guides A list of exonic-exonic guides returned from \code{retrieve_guides_by_label} 
 #'   or from the exonic-exonic entry of \code{split_guides_by_type}.
@@ -627,10 +626,10 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
 #' @return Dataframe of scored data with differential effects called as significant
 #'   for the specified conditions. 
 #' @export
-call_significant_response <- function(scores, control_screen_name, condition_screen_names,
-                                      fdr_threshold = 0.1, differential_threshold = 0,
-                                      neg_type = "Negative", pos_type = "Positive",
-                                      fdr_method = "BH", expected_guides = 6) {
+call_condition_hits <- function(scores, control_screen_name, condition_screen_names,
+                                fdr_threshold = 0.1, differential_threshold = 0,
+                                neg_type = "Negative", pos_type = "Positive",
+                                fdr_method = "BH", expected_guides = 6) {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_screen_name
@@ -679,9 +678,9 @@ call_significant_response <- function(scores, control_screen_name, condition_scr
 #' @return Dataframe of scored data with differential effects called as significant
 #'   for the specified conditions. 
 #' @export
-call_significant_response_combn <- function(scores, screen_names,
-                                            fdr_threshold = 0.1, differential_threshold = 0,
-                                            neg_type = "Negative", pos_type = "Positive") {
+call_combn_hits <- function(scores, screen_names,
+                            fdr_threshold = 0.1, differential_threshold = 0,
+                            neg_type = "Negative", pos_type = "Positive") {
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()
