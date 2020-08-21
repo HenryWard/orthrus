@@ -454,7 +454,7 @@ plot_combn_response <- function(scores, condition_name, filter_names = NULL,
   return(p)
 }
 
-#' Plot LFCs for all gene pairs.
+#' Plot guide-level residuals for all gene pairs.
 #' 
 #' Plots replicate comparisons for all replicates in a list of screens and outputs
 #' plots to a given folder. Works for data returned from \code{call_condition_hits}.
@@ -471,8 +471,10 @@ plot_combn_response <- function(scores, condition_name, filter_names = NULL,
 #'   passed to \code{call_condition_hits} (default "Positive").
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export 
-plot_condition_lfc <- function(scores, residuals, control_name, condition_name, output_folder,
-                               neg_type = "Negative", pos_type = "Positive", plot_type = "png") {
+plot_condition_residuals <- function(scores, residuals, control_name, 
+                                     condition_name, output_folder,
+                                     neg_type = "Negative", pos_type = "Positive", 
+                                     plot_type = "png") {
   
   # Checks plot type and converts to lowercase
   plot_type <- tolower(plot_type)
@@ -517,13 +519,13 @@ plot_condition_lfc <- function(scores, residuals, control_name, condition_name, 
     
     # Plots data
     p <- ggplot2::ggplot(df) +
-      ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
-      ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
-      ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::xlab(x_label) +
       ggplot2::ylab(y_label) +
       ggplot2::geom_bar(ggplot2::aes_string(x = "ID", y = "lfc"), stat = "identity", color = "Black", 
                         fill = ggplot2::alpha(c("gray30"), 1)) +
+      ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
+      ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
+      ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::coord_flip() +
       ggthemes::theme_tufte(base_size = 20)
     
@@ -545,7 +547,7 @@ plot_condition_lfc <- function(scores, residuals, control_name, condition_name, 
   }
 }
 
-#' Plot LFCs for all gene pairs.
+#' Plot guide-level LFCs for all gene pairs.
 #' 
 #' Plots replicate comparisons for all replicates in a list of screens and outputs
 #' plots to a given folder. Works for data returned from \code{call_combn_hits}.
@@ -561,9 +563,9 @@ plot_condition_lfc <- function(scores, residuals, control_name, condition_name, 
 #'   passed to \code{call_combn_hits} (default "Positive").
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export 
-plot_combn_lfc <- function(scores, residuals, condition_name, output_folder,
-                           neg_type = "Negative", pos_type = "Positive",
-                           plot_type = "png") {
+plot_combn_residuals <- function(scores, residuals, condition_name, output_folder,
+                                 neg_type = "Negative", pos_type = "Positive",
+                                 plot_type = "png") {
   
   # Checks plot type and converts to lowercase
   plot_type <- tolower(plot_type)
@@ -620,13 +622,13 @@ plot_combn_lfc <- function(scores, residuals, condition_name, output_folder,
     
     # Plots data
     p <- ggplot2::ggplot(df) +
-      ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
-      ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
-      ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::xlab(x_label) +
       ggplot2::ylab(y_label) +
       ggplot2::geom_bar(ggplot2::aes_string(x = "ID", y = "lfc"), stat = "identity", color = "Black", 
                         fill = ggplot2::alpha(c("gray30"), 1)) +
+      ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
+      ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
+      ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::coord_flip() +
       ggplot2::facet_grid(. ~ orientation) +
       ggthemes::theme_tufte(base_size = 20) +

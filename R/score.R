@@ -22,7 +22,7 @@ scale_values <- function(x) {
 #' @param control_screen_name Name of a control screen to test condition screens against.
 #' @param condition_screen_names A list of condition screen names to score against the 
 #'   control screen.
-#' @param orientation If true, then guide values are scored separately across each 
+#' @param separate_orientation If true, then guide values are scored separately across each 
 #'   orientation (default FALSE).
 #' @param min_guides The minimum number of guides per gene pair required to score data 
 #'   (default 3).
@@ -40,14 +40,14 @@ scale_values <- function(x) {
 #'   condition and loess-normalized residuals for all guides.
 #' @export
 score_conditions_vs_control <- function(guides, screens, control_screen_name, condition_screen_names, 
-                                        orientation = FALSE, min_guides = 3, test = "moderated-t", 
+                                        separate_orientation = FALSE, min_guides = 3, test = "moderated-t", 
                                         loess = TRUE, fdr_method = "BY",
                                         return_residuals = TRUE, verbose = FALSE) {
   
   # Runs separately on each orientation if specified
   results1 <- NULL
   results2 <- NULL
-  if (!orientation) {
+  if (!separate_orientation) {
     results <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
                                                  min_guides = min_guides, test = test, loess = loess,
                                                  return_residuals = return_residuals, verbose = verbose)
