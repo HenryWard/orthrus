@@ -443,8 +443,8 @@ plot_combn_response <- function(scores, condition_name, filter_names = NULL,
     ggplot2::geom_point(ggplot2::aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +
-    ggplot2::xlab(paste0(condition_name, " mean expected single-targeted log FC")) +
-    ggplot2::ylab(paste0(condition_name, " mean observed combinatorial-targeted log FC")) +
+    ggplot2::xlab(paste0(condition_name, " mean expected single-targeting log FC")) +
+    ggplot2::ylab(paste0(condition_name, " mean observed combinatorial-targeting log FC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20) +
