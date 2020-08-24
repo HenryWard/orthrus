@@ -6,7 +6,7 @@ Orthrus is an R package for scoring combinatorial CRISPR screening data.
 
 Orthrus is compatible with R version >= 3.6, and should work on any operating system capable of installing the packages listed in DESCRIPTION.
 
-Install Orthrus directly from Github with the "install_github("HenryWard/Orthrus") command from the devtools package. This should take no more than a minute or two.
+Install Orthrus directly from Github with the `install_github("HenryWard/Orthrus")` command from the devtools package. This should take no more than a minute or two.
 
 ## Usage
 
