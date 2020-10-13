@@ -547,6 +547,54 @@ plot_condition_residuals <- function(scores, residuals, control_name,
   }
 }
 
+#' Plot guide-level residuals for a given gene.
+#' 
+#' Plots guide-level residuals for a given gene and returns the plot. Works for data 
+#' returned from \code{call_condition_hits}.
+#' 
+#' @param scores Dataframe of scores returned from \code{call_condition_hits}.
+#' @param residuals Residuals returned with the return_residuals argument set to true
+#'   from \code{call_condition_hits}.
+#' @param gene Gene name for guides to plot.
+#' @param control_name Name of control passed to \code{call_condition_hits}.
+#' @param condition_name Name of condition passed to \code{call_condition_hits}.
+#' @return A ggplot object.
+#' @export 
+plot_condition_gene_residuals <- function(scores, residuals, gene, control_name, condition_name) {
+  
+  # Checks that genes present in dataframe
+  if (!(gene %in% scores$gene1)) {
+    stop(paste("entry for gene", gene, "not in scores"))
+  }
+  
+  # Gets guide-level residuals for the given gene
+  ind <- which(scores$gene1 == gene)
+  df <- residuals[residuals$n == ind,]
+  x_label <- paste0("Guides")
+  y_label <- paste0("Average differential LFC across replicates")
+  
+  # Computes residuals
+  control_col <- paste0("mean_", control_name)
+  condition_col <- paste0("mean_", condition_name)
+  df$lfc <- df[[condition_col]] - df[[control_col]]
+  
+  # Adds ID column for plotting
+  df$ID <- paste("Guide", 1:nrow(df))
+  
+  # Plots data and returns plot
+  p <- ggplot2::ggplot(df) +
+    ggplot2::xlab(x_label) +
+    ggplot2::ylab(y_label) +
+    ggplot2::geom_bar(ggplot2::aes_string(x = "ID", y = "lfc"), stat = "identity", color = "Black", 
+                      fill = ggplot2::alpha(c("gray30"), 1)) +
+    ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
+    ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
+    ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
+    ggplot2::coord_flip() +
+    ggthemes::theme_tufte(base_size = 20)
+  return(p)
+}
+
 #' Plot guide-level LFCs for all gene pairs.
 #' 
 #' Plots replicate comparisons for all replicates in a list of screens and outputs
@@ -652,6 +700,70 @@ plot_combn_residuals <- function(scores, residuals, condition_name, output_folde
     file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".", plot_type)
     ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
   }
+}
+
+#' Plot guide-level residuals for a given gene.
+#' 
+#' Plots guide-level residuals for a given gene pair and returns the plot. Works for data 
+#' returned from \code{call_combn_hits}.
+#' 
+#' @param scores Dataframe of scores returned from \code{call_combn_hits}.
+#' @param residuals Residuals returned with the return_residuals argument set to true
+#'   from \code{call_combn_hits}.
+#' @param gene1 First gene name for guides to plot.
+#' @param gene2 Second gene name for guides to plot.
+#' @param condition_name Name of condition passed to \code{call_combn_hits}.
+#' @return A ggplot object.
+#' @export 
+plot_combn_gene_residuals <- function(scores, residuals, gene1, gene2, condition_name) {
+  
+  # Checks that genes present in dataframe
+  if (!((gene1 %in% scores$gene1) & (gene2 %in% scores$gene2)) &
+      !((gene1 %in% scores$gene2) & (gene2 %in% scores$gene1))) {
+    stop(paste("entry for gene", gene1, "and", gene2, "not in scores"))
+  }
+
+  # Splits and preps residuals dataframes
+  residuals1 <- residuals[[1]]
+  residuals2 <- residuals[[2]]
+  residuals1$orientation <- "Orientation 1"
+  residuals2$orientation <- "Orientation 2"
+
+  # Gets guide-level residuals for the given gene
+  ind <- max(which(scores$gene1 == gene1 & scores$gene2 == gene2),
+             which(scores$gene1 == gene2 & scores$gene2 == gene1))
+  df1 <- residuals1[residuals1$n == ind,]
+  df2 <- residuals2[residuals2$n == ind,]
+  df1$orientation <- paste0(df1$orientation[1], " (n = ", nrow(df1), ")")
+  df2$orientation <- paste0(df2$orientation[1], " (n = ", nrow(df2), ")")
+  df <- rbind(df1, df2)
+  x_label <- paste0("Guides")
+  y_label <- paste0("Average differential LFC across replicates")
+
+  # Computes residuals
+  single_col <- paste0("mean_single_", condition_name)
+  combn_col <- paste0("mean_combn_", condition_name)
+  df$lfc <- df[[combn_col]] - df[[single_col]]
+
+  # Adds ID column for plotting
+  df$ID <- paste("Guide", 1:nrow(df))
+  
+  # Plots data and returns plot
+  p <- ggplot2::ggplot(df) +
+    ggplot2::xlab(x_label) +
+    ggplot2::ylab(y_label) +
+    ggplot2::geom_bar(ggplot2::aes_string(x = "ID", y = "lfc"), stat = "identity", color = "Black", 
+                      fill = ggplot2::alpha(c("gray30"), 1)) +
+    ggplot2::geom_hline(yintercept = 1, linetype = 2, size = 1, alpha = 0.75, color = "Yellow") +
+    ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
+    ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
+    ggplot2::coord_flip() +
+    ggplot2::facet_grid(. ~ orientation) +
+    ggthemes::theme_tufte(base_size = 20) +
+    ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+                   axis.ticks.y = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_rect(fill = NA, color = "black"))
+  return(p)
 }
 
 
