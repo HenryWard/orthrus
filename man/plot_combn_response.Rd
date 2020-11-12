@@ -7,16 +7,21 @@
 plot_combn_response(
   scores,
   condition_name,
+  output_folder,
   filter_names = NULL,
   loess = TRUE,
   neg_type = "Negative",
-  pos_type = "Positive"
+  pos_type = "Positive",
+  volcano_type = "FDR",
+  plot_type = "png"
 )
 }
 \arguments{
 \item{scores}{Dataframe of scores returned from \code{call_combn_hits}.}
 
 \item{condition_name}{Name of condition passed to \code{call_combn_hits}.}
+
+\item{output_folder}{Folder to output plots to.}
 
 \item{filter_names}{If a list of column names is given, calls points as non-significant 
 if they are significant in the provided columsn (e.g. to remove points significant 
@@ -30,13 +35,16 @@ passed to \code{call_combn_hits} (default "Negative").}
 
 \item{pos_type}{Label for significant effects with a positive differential effect
 passed to \code{call_combn_hits} (default "Positive").}
-}
-\value{
-A ggplot object.
+
+\item{volcano_type}{One of "pval" or "FDR" to specify whether to plot -log10(pval)
+or -log2(FDR), respectively (default "FDR").}
+
+\item{plot_type}{Type of plot to output, one of "png" or "pdf" (default "png").}
 }
 \description{
 Pretty-plots response for data which uses a derived null model (e.g. for comparing
 dual-gene knockout effects to a multiplicative null model derived from single-gene
 effects). Assumes that data was scored by \code{score_combn_vs_single} and 
-significant effects were called by \code{call_combn_hits}.
+significant effects were called by \code{call_combn_hits}. Writes both a scatterplot 
+and a volcano plot to file in the specified folder.
 }

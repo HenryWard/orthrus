@@ -4,13 +4,7 @@
 \alias{add_screen}
 \title{Adds a new screen to a list of screens}
 \usage{
-add_screen(
-  screen_list = NULL,
-  name,
-  replicates,
-  normalize_name = NULL,
-  target_coverage = 200
-)
+add_screen(screen_list = NULL, name, replicates, normalize_name = NULL)
 }
 \arguments{
 \item{screen_list}{An existing list of screens (optional, default NULL).}
@@ -21,8 +15,6 @@ add_screen(
 
 \item{normalize_name}{A name of another screen to normalize data in this screen to
 (e.g. "RPE1_T0", optional, default NULL).}
-
-\item{target_coverage}{Target coverage of the given screen (optional, default 100).}
 }
 \value{
 A named list corresponding to provided screen names, where each sub-list 

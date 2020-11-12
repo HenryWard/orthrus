@@ -14,6 +14,7 @@ score_conditions_vs_control(
   test = "moderated-t",
   loess = TRUE,
   fdr_method = "BY",
+  filter_genes = NULL,
   return_residuals = TRUE,
   verbose = FALSE
 )
@@ -42,6 +43,8 @@ rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t"
 Only works when test = "moderated-t" (default TRUE).}
 
 \item{fdr_method}{Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default "BY").}
+
+\item{filter_genes}{List of genes to filter from scoring (default NULL).}
 
 \item{return_residuals}{If FALSE, returns NA instead of residuals dataframe (default TRUE).
 This is recommend if scoring large datasets and memory is a limitation.}

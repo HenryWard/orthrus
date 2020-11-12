@@ -10,14 +10,26 @@
 #' @param df Reads or lfc dataframe.
 #' @param screens List of screens created with \code{add_screens}.
 #' @param output_folder Folder to output plots to. 
+#' @param negative_controls List of negative control genes to append to default list of
+#'   non-essential genes (default NULL).
+#' @param control_label Label for negative control genes in plot (default "Negative controls").
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @param display_numbers Whether or not to include PCC values in heatmap (default TRUE).
 #' @export 
-plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png",
+plot_lfc_qc <- function(df, screens, output_folder, negative_controls = NULL, 
+                        control_label = "Negative controls", plot_type = "png", 
                         display_numbers = TRUE) {
   
   # Checks for input errors
   check_screen_params(df, screens)
+  
+  # Gets essential gene QC metrics
+  auc <- essential_lfc_qc(df, screens, negative_controls = negative_controls)
+  auc_file <- file.path(output_folder, "essential_PR_QC.tsv")
+  if (!is.null(auc)) {
+    utils::write.table(auc, auc_file, quote = FALSE, sep = "\t",
+                       row.names = FALSE, col.names = TRUE) 
+  }
   
   # Checks plot type and converts to lowercase
   plot_type <- tolower(plot_type)
@@ -27,6 +39,16 @@ plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png",
   
   # Builds dataframe of replicate PCCs
   cor_df <- NULL
+  
+  # Adds nonessential labels to df and sets color scheme for replicate plots
+  nonessentials <- traver_nonessentials
+  nonessentials <- c(nonessentials, negative_controls)
+  nonessential_ind <- (df$gene1 %in% nonessentials & df$gene2 %in% nonessentials) |
+    (df$gene1 %in% nonessentials & df$gene2 == "NegControl") |
+    (df$gene2 %in% nonessentials & df$gene1 == "NegControl")
+  df$nonessentials <- "Other"
+  df$nonessentials[nonessential_ind] <- control_label
+  color_values <- c("Other" = "Gray", control_label = "Blue")
   
   # Compares replicates across all screens
   for (screen in screens) {
@@ -38,12 +60,14 @@ plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png",
         col2 <- pairs[2,i]
         x_label <- paste0(col1, " log fold change")
         y_label <- paste0(col2, " log fold change")
-        temp <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE)
+        temp <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE,
+                             color_col = "nonessentials", color_lab = "Guide type",
+                             color_values = color_values)
         p <- temp[[1]]
         pcc <- temp[[2]]
         scc <- temp[[3]]
         file_name <- paste0(col1, "_vs_", col2, "_replicate_comparison.", plot_type)
-        ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+        suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
         
         # Stores PCC in dataframe
         if (is.null(cor_df)) {
@@ -78,6 +102,75 @@ plot_lfc_qc <- function(df, screens, output_folder, plot_type = "png",
   df <- df[,all_cols]
   heatmap_file <- file.path(output_folder, paste0("lfc_heatmap.", plot_type))
   plot_heatmap(df, col_groups, heatmap_file, display_numbers)
+}
+
+#' Computes essential gene recovery AUC.
+#' 
+#' Computes area under the curve for ROC curves that measure how well each technical replicate
+#' recovers signal for essential-targeting guides and saves results to file. Only computes AUC
+#' for guides that target essential genes twice, guides that target two different essential 
+#' genes, or guides that target an essential gene and an intergenic region.
+#' 
+#' @param df LFC dataframe.
+#' @param screens List of screens generated with \code{add_screens}. 
+#' @param negative_controls List of negative control genes to append to default list of
+#'   non-essential genes (default NULL).
+#' @return Returns a dataframe with three columns for replicate name, essential AUC relative 
+#'   to all other genes, and essential AUC relative to a specified set of non-essentials.
+essential_lfc_qc <- function(df, screens, negative_controls = NULL) {
+  
+  # Loads gene standards from internal data
+  essentials <- traver_core_essentials
+  nonessentials <- traver_nonessentials
+  
+  # Adds genes to nonessentials list if specified
+  if (!is.null(negative_controls)) {
+    nonessentials <- c(nonessentials, negative_controls) 
+  }
+  
+  # Gets indices of essential-targeting guides
+  essential_ind <- (df$gene1 %in% essentials & df$gene2 %in% essentials) |
+    (df$gene1 %in% essentials & df$gene2 == "NegControl") |
+    (df$gene2 %in% essentials & df$gene1 == "NegControl")
+  
+  # Gets indices of nonessential-targeting guides
+  nonessential_ind <- (df$gene1 %in% nonessentials & df$gene2 %in% nonessentials) |
+    (df$gene1 %in% nonessentials & df$gene2 == "NegControl") |
+    (df$gene2 %in% nonessentials & df$gene1 == "NegControl")
+  
+  # Throws warning if too few genes in standards
+  skip_nonessential <- FALSE
+  if (sum(essential_ind) < 10) {
+    warning(paste("too few essential-targeting guides in df, skipping all AUC computation"))
+    return(NULL)
+  }
+  if (sum(nonessential_ind) < 10) {
+    warning(paste("too few essential-targeting guides in df, skipping non-essential AUC computation"))
+    skip_nonessential <- TRUE
+  }
+  
+  # Gets PR curves for all essential genes relative to all other genes
+  results <- data.frame(replicate = NA, 
+                        essential_AUC_all = NA,
+                        essential_AUC_nonessential = NA)
+  counter <- 1
+  for (screen in screens) {
+    for (rep in screen[["replicates"]]) {
+      roc <- PRROC::roc.curve(-df[[rep]], weights.class0 = as.numeric(essential_ind), curve = TRUE)
+      auc1 <- roc$auc
+      auc2 <- NA
+      if (!skip_nonessential) {
+        essential_rownames <- rownames(df)[essential_ind]
+        temp <- df[essential_ind | nonessential_ind,]
+        temp_essential_ind <- rownames(temp) %in% essential_rownames
+        roc <- PRROC::roc.curve(-temp[[rep]], weights.class0 = as.numeric(temp_essential_ind), curve = TRUE)
+        auc2 <- roc$auc
+      }
+      results[counter,] <- c(rep, auc1, auc2)
+      counter <- counter + 1
+    }
+  }
+  return(results)
 }
 
 #' Plot read counts for a screen.
@@ -127,7 +220,7 @@ plot_reads_qc <- function(df, screens, output_folder,
       all_cols <- c(all_cols, col)
       p <- plot_reads(df, col, log_scale, pseudocount)
       file_name <- paste0(col, "_raw_reads_histogram.", plot_type)
-      ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)  
+      suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
       col_groups[i] <- screen_name
       i <- i + 1
     }
@@ -151,7 +244,7 @@ plot_reads_qc <- function(df, screens, output_folder,
     ggthemes::theme_tufte(base_size = 20) +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(angle = 45, hjust = 1))
   file_name <- paste0("total_reads.", plot_type)
-  ggplot2::ggsave(file.path(output_folder, file_name), plot = p, width = 10, height = 7, dpi = 300)
+  suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), plot = p, width = 10, height = 7, dpi = 300))
   
   # Log-scales read counts if specified
   df <- df[,all_cols]
@@ -201,6 +294,9 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
 #' @param ylab Y-axis label.
 #' @param color_col Name of column to color points by (optional).
 #' @param color_lab Name of color legend (optional, defaults to color_col).
+#' @param color_values Named list of discrete values in color_col mapped
+#'   to their respective colors (defaults to RColorBrewer's Set2 colors
+#'   with NULL).
 #' @param print_cor If true, prints Pearson correlation between columns 
 #'   (default FALSE).
 #' @return A list of three elements. The first is a ggplot object, the
@@ -208,7 +304,7 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
 #'   the Spearman correlation between xcol and ycol.
 plot_samples <- function(df, xcol, ycol, xlab, ylab, 
                          color_col = NULL, color_lab = NULL,
-                         print_cor = FALSE) {
+                         color_values = NULL, print_cor = FALSE) {
   
   # Computes correlations and optionally prints Pearson correlation
   pcc <- stats::cor(df[[xcol]], df[[ycol]])
@@ -227,13 +323,30 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
       ggplot2::ylab(ylab) +
       ggthemes::theme_tufte(base_size = 20) 
   } else {
+    
+    # Gets parameters for a discrete color scale
     if (is.null(color_lab)) {
       color_lab <- color_col
     }
-    p <- ggplot2::ggplot(df, ggplot2::aes_string(x = xcol, y = ycol, color = color_col)) +
-      ggplot2::geom_abline(slope = 1, intercept = 0, color = "black", linetype = 2, size = 1) +
-      ggplot2::geom_point(size = 1.5, alpha = 0.7) +
-      ggplot2::scale_color_gradientn(colors = c("blue", "gray"), name = color_lab) +
+    if (is.null(color_values)) {
+      n_discrete <- length(unique(df[[color_col]]))
+      n_color <- max(3, n_discrete)
+      color_values <- RColorBrewer::brewer.pal(n_color, "Set1")[1:n_discrete]
+      names(color_values) <- sort(unique(df[[color_col]]))
+    }
+    
+    # Constructs basic plot
+    p <- ggplot2::ggplot() +
+      ggplot2::geom_abline(slope = 1, intercept = 0, color = "black", linetype = 2, size = 1)
+      
+    # Adds layers of points one by one
+    for (x in names(color_values)) {
+      p <- p + ggplot2::geom_point(data = df[df[[color_col]] == x,], size = 1.5, alpha = 0.7,
+                                   mapping = ggplot2::aes_string(x = xcol, y = ycol, color = color_col))
+    }
+    
+    # Finishes plot
+    p <- p + ggplot2::scale_color_manual(values = color_values, name = color_lab) +
       ggplot2::xlab(xlab) +
       ggplot2::ylab(ylab) +
       ggthemes::theme_tufte(base_size = 20)
@@ -293,31 +406,42 @@ plot_heatmap <- function(df, col_groups, filename, display_numbers) {
 #' Pretty-plots response for data which does not use a derived null model (e.g. for directly
 #' comparing drug response to DMSO response). Assumes that data was scored by 
 #' \code{score_conditions_vs_control} and significant effects were called by 
-#' \code{call_condition_hits}.
+#' \code{call_condition_hits}. Writes both a scatterplot and a volcano plot
+#' to file in the specified folder.
 #' 
 #' @param scores Dataframe of scores returned from \code{call_condition_hits}.
 #' @param control_name Name of control passed to \code{call_condition_hits}.
 #' @param condition_name Name of condition passed to \code{call_condition_hits}.
+#' @param output_folder Folder to output plots to. 
 #' @param loess If true and data was loess-normalized, plots loess null model instead
 #'   (default TRUE).
 #' @param neg_type Label for significant effects with a negative differential effect
 #'   passed to \code{call_condition_hits} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
 #'   passed to \code{call_condition_hits} (default "Positive").
-#' @return A ggplot object.
+#' @param volcano_type One of "pval" or "FDR" to specify whether to plot -log10(pval)
+#'   or -log2(FDR), respectively (default "FDR").
+#' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export
-plot_condition_response <- function(scores, control_name, condition_name,
+plot_condition_response <- function(scores, control_name, condition_name, output_folder,
                                     loess = TRUE, neg_type = "Negative", 
-                                    pos_type = "Positive") {
+                                    pos_type = "Positive", volcano_type = "FDR",
+                                    plot_type = "png") {
+  
+  # Makes output folder if it doesn't exist
+  if (!dir.exists(output_folder)) {
+    dir.create(output_folder)
+  }
   
   # Manually sets colors for plot
-  scores <- scores[order(scores[[paste0("differential_", condition_name, "_vs_", control_name)]]),]
+  diff_col <- paste0("differential_", condition_name, "_vs_", control_name)
+  scores <- scores[order(scores[[diff_col]]),]
   colors <- c("Black", "Gray", "Black")
   fill <- c("Blue", "Gray", "Yellow")
   response_col <- paste0("effect_type_", condition_name)
-  neg_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] < 0 &
+  neg_ind <- scores[[diff_col]] < 0 &
     scores[[response_col]] != "None"
-  pos_ind <- scores[[paste0("differential_", condition_name, "_vs_", control_name)]] > 0 &
+  pos_ind <- scores[[diff_col]] > 0 &
     scores[[response_col]] != "None"
   if (any(neg_ind) & !any(pos_ind)) {
     scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None"))
@@ -337,7 +461,7 @@ plot_condition_response <- function(scores, control_name, condition_name,
 
   # Builds basic plot
   p <- ggplot2::ggplot(scores, ggplot2::aes_string(x = paste0("mean_", control_name), 
-                                          y = paste0("mean_", condition_name))) +
+                                                   y = paste0("mean_", condition_name))) +
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray") +
     ggplot2::geom_vline(xintercept = 0, linetype = 2, size = 1, alpha = 1, color = "Gray")
   
@@ -361,7 +485,44 @@ plot_condition_response <- function(scores, control_name, condition_name,
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
                    legend.text = ggplot2:: element_text(size = 16))
-  return(p)
+  
+  # Saves to file
+  file_name <- paste0(condition_name, "_vs_", control_name, "_scatter.", plot_type)
+  suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
+  
+  # Gets log-scaled p-value or FDR column for volcano plot
+  fdr_col <- paste0("fdr_", condition_name, "_vs_", control_name)
+  pval_col <- paste0("pval_", condition_name, "_vs_", control_name)
+  sig_col <- "volcano_y"
+  ylab <- ""
+  if (volcano_type == "FDR") {
+    scores[[sig_col]] <- -log2(scores[[fdr_col]])
+    ylab <- "-log2(FDR)"
+  } else if (volcano_type == "pval") {
+    scores[[sig_col]] <- -log10(scores[[pval_col]])
+    ylab <- "-log10(p)"
+  } else {
+    cat(paste("invalid volcano_type value specified, defaulting to -log2(FDR)"))
+    scores[[sig_col]] <- -log2(scores[[fdr_col]])
+  }
+  
+  # Makes volcano plot
+  p <- ggplot2::ggplot(scores, ggplot2::aes_string(x = diff_col, y = sig_col)) +
+    ggplot2::geom_point(ggplot2::aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::scale_fill_manual(values = fill) +
+    ggplot2::xlab(paste0("Differential effect")) +
+    ggplot2::ylab(ylab) +
+    ggplot2::labs(fill = "Significant response") +
+    ggplot2::guides(color = FALSE, size = FALSE) +
+    ggthemes::theme_tufte(base_size = 20) +
+    ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
+                   axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
+                   legend.text = ggplot2:: element_text(size = 16))
+  
+  # Saves to file
+  file_name <- paste0(condition_name, "_vs_", control_name, "_volcano.", plot_type)
+  suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
 }
 
 #' Plots drug response for scored paired data.
@@ -369,10 +530,12 @@ plot_condition_response <- function(scores, control_name, condition_name,
 #' Pretty-plots response for data which uses a derived null model (e.g. for comparing
 #' dual-gene knockout effects to a multiplicative null model derived from single-gene
 #' effects). Assumes that data was scored by \code{score_combn_vs_single} and 
-#' significant effects were called by \code{call_combn_hits}.
+#' significant effects were called by \code{call_combn_hits}. Writes both a scatterplot 
+#' and a volcano plot to file in the specified folder.
 #' 
 #' @param scores Dataframe of scores returned from \code{call_combn_hits}.
 #' @param condition_name Name of condition passed to \code{call_combn_hits}.
+#' @param output_folder Folder to output plots to. 
 #' @param filter_names If a list of column names is given, calls points as non-significant 
 #'   if they are significant in the provided columsn (e.g. to remove points significant 
 #'   in control screens; default NULL).
@@ -382,11 +545,19 @@ plot_condition_response <- function(scores, control_name, condition_name,
 #'   passed to \code{call_combn_hits} (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
 #'   passed to \code{call_combn_hits} (default "Positive").
-#' @return A ggplot object.
+#' @param volcano_type One of "pval" or "FDR" to specify whether to plot -log10(pval)
+#'   or -log2(FDR), respectively (default "FDR").
+#' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export
-plot_combn_response <- function(scores, condition_name, filter_names = NULL, 
-                                loess = TRUE, neg_type = "Negative", 
-                                pos_type = "Positive") {
+plot_combn_response <- function(scores, condition_name, output_folder,
+                                filter_names = NULL, loess = TRUE, 
+                                neg_type = "Negative", pos_type = "Positive", 
+                                volcano_type = "FDR", plot_type = "png") {
+  
+  # Makes output folder if it doesn't exist
+  if (!dir.exists(output_folder)) {
+    dir.create(output_folder)
+  }
   
   # If filter_names given, remove significant guides with the same effect as a control 
   # type of guides (e.g. DMSO) from plot
@@ -402,13 +573,12 @@ plot_combn_response <- function(scores, condition_name, filter_names = NULL,
   }
   
   # Manually sets colors for plot
-  scores <- scores[order(scores[[paste0("differential_combn_vs_single_", condition_name)]]),]
+  diff_col <- paste0("differential_combn_vs_single_", condition_name)
+  scores <- scores[order(scores[[diff_col]]),]
   colors <- c("Black", "Gray", "Black")
   fill <- c("Blue", "Gray", "Yellow")
-  neg_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] < 0 &
-    scores[[response_col]] != "None"
-  pos_ind <- scores[[paste0("differential_combn_vs_single_", condition_name)]] > 0 &
-    scores[[response_col]] != "None"
+  neg_ind <- scores[[diff_col]] < 0 & scores[[response_col]] != "None"
+  pos_ind <- scores[[diff_col]] > 0 & scores[[response_col]] != "None"
   if (any(neg_ind) & !any(pos_ind)) {
     scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None"))
     colors <- c("Blue", "Gray")
@@ -451,7 +621,46 @@ plot_combn_response <- function(scores, condition_name, filter_names = NULL,
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
                    legend.text = ggplot2:: element_text(size = 16))
-  return(p)
+  
+  # Saves to file
+  file_name <- paste0(condition_name, "_combn_scatter.", plot_type)
+  suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
+  
+  # Gets log-scaled p-value or FDR columns for volcano plot
+  fdr_col1 <- paste0("fdr1_combn_vs_single_", condition_name)
+  fdr_col2 <- paste0("fdr2_combn_vs_single_", condition_name)
+  pval_col1 <- paste0("pval1_combn_vs_single_", condition_name)
+  pval_col2 <- paste0("pval2_combn_vs_single_", condition_name)
+  sig_col <- "volcano_y"
+  ylab <- ""
+  if (volcano_type == "FDR") {
+    scores[[sig_col]] <- -log2(rowMeans(scores[,c(fdr_col1, fdr_col2)], na.rm = TRUE))
+    ylab <- "Mean -log2(FDR) across orientations"
+  } else if (volcano_type == "pval") {
+    scores[[sig_col]] <- -log10(rowMeans(scores[,c(fdr_col1, fdr_col2)], na.rm = TRUE))
+    ylab <- "Mean -log10(p) across orientations"
+  } else {
+    cat(paste("invalid volcano_type value specified, defaulting to -log2(FDR)"))
+    scores[[sig_col]] <- -log2(rowMeans(scores[[fdr_col1]], scores[[fdr_col2]], na.rm = TRUE))
+  }
+  
+  # Makes volcano plot
+  p <- ggplot2::ggplot(scores, ggplot2::aes_string(x = diff_col, y = sig_col)) +
+    ggplot2::geom_point(ggplot2::aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::scale_fill_manual(values = fill) +
+    ggplot2::xlab(paste0("Differential effect")) +
+    ggplot2::ylab(ylab) +
+    ggplot2::labs(fill = "Significant response") +
+    ggplot2::guides(color = FALSE, size = FALSE) +
+    ggthemes::theme_tufte(base_size = 20) +
+    ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
+                   axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
+                   legend.text = ggplot2:: element_text(size = 16))
+  
+  # Saves to file
+  file_name <- paste0(condition_name, "_combn_volcano.", plot_type)
+  suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
 }
 
 #' Plot guide-level residuals for all gene pairs.
@@ -543,7 +752,7 @@ plot_condition_residuals <- function(scores, residuals, control_name,
     
     # Saves to file
     file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".", plot_type)
-    ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+    suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
   }
 }
 
@@ -698,7 +907,7 @@ plot_combn_residuals <- function(scores, residuals, condition_name, output_folde
       
     # Saves to file
     file_name <- paste0(effect, "_", rank, "_", gene1, "_", gene2, ".", plot_type)
-    ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300)
+    suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), width = 10, height = 7, dpi = 300))
   }
 }
 

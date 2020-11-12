@@ -12,7 +12,7 @@ split_guides_by_type(guides)
 \value{
 A list of three separate guide lists. Dual-gene exonic-exonic guides are
   stored in the key "exonic_exonic", exonic-intergenic guides are stored in the 
-  key "exonic-intergenic" and single-gene exonic-exonic guides are stored in the
+  key "exonic_intergenic" and single-gene exonic-exonic guides are stored in the
   key "single_gene_dual_targeted".
 }
 \description{

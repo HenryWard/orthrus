@@ -31,6 +31,7 @@ scale_values <- function(x) {
 #' @param loess If true, loess-normalizes residuals before running hypothesis testing.
 #'   Only works when test = "moderated-t" (default TRUE).
 #' @param fdr_method Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default "BY").
+#' @param filter_genes List of genes to filter from scoring (default NULL).
 #' @param return_residuals If FALSE, returns NA instead of residuals dataframe (default TRUE).
 #'   This is recommend if scoring large datasets and memory is a limitation.  
 #' @param verbose If true, prints verbose output (default FALSE). 
@@ -41,8 +42,19 @@ scale_values <- function(x) {
 #' @export
 score_conditions_vs_control <- function(guides, screens, control_screen_name, condition_screen_names, 
                                         separate_orientation = FALSE, min_guides = 3, test = "moderated-t", 
-                                        loess = TRUE, fdr_method = "BY",
+                                        loess = TRUE, fdr_method = "BY", filter_genes = NULL,
                                         return_residuals = TRUE, verbose = FALSE) {
+  
+  # Filters specified genes from dataset before scoring
+  if (!is.null(filter_genes)) {
+    for (gene in filter_genes) {
+      ind <- unlist(lapply(guides, function(x) x[["gene1"]] == gene | x[["gene2"]] == gene))
+      if (sum(ind) > 0) {
+        print(paste("Removing", sum(ind), "gene pairs containing", gene, "\n"))
+        guides <- guides[!ind]
+      }
+    }
+  }
   
   # Runs separately on each orientation if specified
   results1 <- NULL
@@ -266,6 +278,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
 #' @param loess If true, loess-normalizes residuals before running hypothesis testing.
 #'   Only works when test = "moderated-t" (default TRUE). 
 #' @param fdr_method Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default "BY").
+#' @param filter_genes List of genes to filter from scoring (default NULL).
 #' @param return_residuals If FALSE, doesn't return residuals dataframe (default TRUE).
 #'   This is recommend if scoring large datasets and memory is a limitation.  
 #' @param verbose If true, prints verbose output (default FALSE). 
@@ -276,8 +289,19 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
 #' @export
 score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_names, 
                                   min_guides = 3, test = "moderated-t",
-                                  loess = TRUE, fdr_method = "BY",
+                                  loess = TRUE, fdr_method = "BY", filter_genes = NULL,
                                   return_residuals = TRUE, verbose = FALSE) {
+  
+  # Filters specified genes from dataset before scoring
+  if (!is.null(filter_genes)) {
+    for (gene in filter_genes) {
+      ind <- unlist(lapply(combn_guides, function(x) x[["gene1"]] == gene | x[["gene2"]] == gene))
+      if (sum(ind) > 0) {
+        print(paste("Removing", sum(ind), "gene pairs containing", gene, "from combn guides\n"))
+        combn_guides <- combn_guides[!ind]
+      }
+    }
+  }
   
   # Gets condition names and columns for any number of conditions
   condition_names <- c()

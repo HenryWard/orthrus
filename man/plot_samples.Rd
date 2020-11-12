@@ -12,6 +12,7 @@ plot_samples(
   ylab,
   color_col = NULL,
   color_lab = NULL,
+  color_values = NULL,
   print_cor = FALSE
 )
 }
@@ -29,6 +30,10 @@ plot_samples(
 \item{color_col}{Name of column to color points by (optional).}
 
 \item{color_lab}{Name of color legend (optional, defaults to color_col).}
+
+\item{color_values}{Named list of discrete values in color_col mapped
+to their respective colors (defaults to RColorBrewer's Set2 colors
+with NULL).}
 
 \item{print_cor}{If true, prints Pearson correlation between columns 
 (default FALSE).}

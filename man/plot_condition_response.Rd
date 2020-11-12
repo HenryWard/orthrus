@@ -8,9 +8,12 @@ plot_condition_response(
   scores,
   control_name,
   condition_name,
+  output_folder,
   loess = TRUE,
   neg_type = "Negative",
-  pos_type = "Positive"
+  pos_type = "Positive",
+  volcano_type = "FDR",
+  plot_type = "png"
 )
 }
 \arguments{
@@ -20,6 +23,8 @@ plot_condition_response(
 
 \item{condition_name}{Name of condition passed to \code{call_condition_hits}.}
 
+\item{output_folder}{Folder to output plots to.}
+
 \item{loess}{If true and data was loess-normalized, plots loess null model instead
 (default TRUE).}
 
@@ -28,13 +33,16 @@ passed to \code{call_condition_hits} (default "Negative").}
 
 \item{pos_type}{Label for significant effects with a positive differential effect
 passed to \code{call_condition_hits} (default "Positive").}
-}
-\value{
-A ggplot object.
+
+\item{volcano_type}{One of "pval" or "FDR" to specify whether to plot -log10(pval)
+or -log2(FDR), respectively (default "FDR").}
+
+\item{plot_type}{Type of plot to output, one of "png" or "pdf" (default "png").}
 }
 \description{
 Pretty-plots response for data which does not use a derived null model (e.g. for directly
 comparing drug response to DMSO response). Assumes that data was scored by 
 \code{score_conditions_vs_control} and significant effects were called by 
-\code{call_condition_hits}.
+\code{call_condition_hits}. Writes both a scatterplot and a volcano plot
+to file in the specified folder.
 }

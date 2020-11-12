@@ -9,8 +9,8 @@
 #'   \item{ID}{guide ID}
 #'   \item{Library}{which library the guide belongs to, of "DualTargeting", 
 #'                  "DualTargeting_NT", "Paralogs", or "DualTargeting_iCtrl"}
-#'   \item{Gene.symbol1}{gene targeted by Cas9}
-#'   \item{Gene.symbol2}{gene targeted by Cas12a}
+#'   \item{gene1}{gene targeted by Cas9}
+#'   \item{gene2}{gene targeted by Cas12a}
 #'   \item{Cas9.Target.Site}{genomic region targeted by Cas9}
 #'   \item{Cas9.Guide.Source}{"TKOv3" if guide originated in TKOv3 library,
 #'                            otherwise "KRB" if made for this library}

@@ -8,8 +8,6 @@ retrieve_guides_by_label(
   df,
   gene_pairs,
   screens,
-  gene_col1,
-  gene_col2,
   label_col1,
   label_col2,
   id_col1 = NULL,
@@ -24,11 +22,6 @@ label_col1, label_col2 and replicate columns in screens.}
 \item{gene_pairs}{Dataframe returned by \code{unique_gene_pairs}.}
 
 \item{screens}{List of screens generated with \code{add_screens}.}
-
-\item{gene_col1}{A column containing the first of two gene names. Intergenic regions must be 
-denoted as "---" and non-targeted genes must be denoted as "None".}
-
-\item{gene_col2}{See above.}
 
 \item{label_col1}{A column specify whether the guide in gene_col1 targeted an exonic or
 intergenic region, which must be labeled as "exonic" or "intergenic".}

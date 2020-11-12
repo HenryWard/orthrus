@@ -4,16 +4,11 @@
 \alias{unique_gene_pairs}
 \title{Get unique gene pairs}
 \usage{
-unique_gene_pairs(df, gene_col1, gene_col2)
+unique_gene_pairs(df)
 }
 \arguments{
 \item{df}{A dataframe where each row corresponds to a single guide construct that targets 
-two genes, which contains the columns named in the variables gene_col1 and gene_col2.}
-
-\item{gene_col1}{A column containing the first of two gene names. Intergenic regions must be 
-denoted as "---" and non-targeted genes must be denoted as "None".}
-
-\item{gene_col2}{See above.}
+two genes, which contains the columns gene1 and gene2.}
 }
 \value{
 A dataframe with two gene name columns where each row contains one unique gene pair.
@@ -21,6 +16,6 @@ A dataframe with two gene name columns where each row contains one unique gene p
 \description{
 This function returns all unique gene pairs from two columns containing gene names in a dataframe.
 This is necessary for scoring combinatorial data where each row corresponds to a single guide 
-construct that targets two genes. Intergenic regions must be listed as "---" values, and guides
+construct that targets two genes. NegControl regions must be listed as "NegControl" values, and guides
 which only target one gene must have the non-targeted gene listed as "None".
 }

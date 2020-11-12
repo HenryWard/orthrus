@@ -8,6 +8,8 @@ plot_lfc_qc(
   df,
   screens,
   output_folder,
+  negative_controls = NULL,
+  control_label = "Negative controls",
   plot_type = "png",
   display_numbers = TRUE
 )
@@ -18,6 +20,11 @@ plot_lfc_qc(
 \item{screens}{List of screens created with \code{add_screens}.}
 
 \item{output_folder}{Folder to output plots to.}
+
+\item{negative_controls}{List of negative control genes to append to default list of
+non-essential genes (default NULL).}
+
+\item{control_label}{Label for negative control genes in plot (default "Negative controls").}
 
 \item{plot_type}{Type of plot to output, one of "png" or "pdf" (default "png").}
 

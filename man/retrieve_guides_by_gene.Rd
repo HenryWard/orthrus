@@ -7,32 +7,25 @@
 retrieve_guides_by_gene(
   df,
   gene_pairs,
-  gene_col1,
-  gene_col2,
-  guide_cols,
+  screens,
   id_col1 = NULL,
   id_col2 = NULL
 )
 }
 \arguments{
 \item{df}{A dataframe where each row corresponds to a single guide construct that targets 
-two genes, which contains the columns named in the variables gene_col1, gene_col2 and 
-guide_cols.}
+two genes, which contains the columns gene1, gene2 and optionally the columns specified by
+id_col1 and id_col2.}
 
 \item{gene_pairs}{Dataframe returned by \code{unique_gene_pairs}.}
 
-\item{gene_col1}{A column containing the first of two gene names. Intergenic regions must be 
-denoted as "---" and non-targeted genes must be denoted as "None".}
-
-\item{gene_col2}{See above.}
-
-\item{guide_cols}{A list of all columns containing log-normalized fold-changes.}
+\item{screens}{List of screens generated with \code{add_screens}.}
 
 \item{id_col1}{A column containing guide-specific indices, e.g. guide sequences or IDs, for
-guides in gene_col1 (optional, default NULL).}
+guides in the column gene1 (optional, default NULL).}
 
 \item{id_col2}{A column containing guide-specific indices, e.g. guide sequences or IDs, for
-guides in gene_col2 (optional, default NULL).}
+guides in the column gene2 (optional, default NULL).}
 }
 \value{
 A list indexed by unique gene pairs that contains the gene names in the keys 
