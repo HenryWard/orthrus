@@ -8,7 +8,7 @@ call_combn_hits(
   scores,
   screen_names,
   fdr_threshold = 0.1,
-  differential_threshold = 0,
+  differential_threshold = 0.5,
   neg_type = "Negative",
   pos_type = "Positive"
 )
@@ -23,7 +23,7 @@ for which to call significant effects.}
 (default 0.1).}
 
 \item{differential_threshold}{Absolute value threshold on differential effects, 
-below which gene effects are not called as significant (default 0).}
+below which gene effects are not called as significant (default 0.5).}
 
 \item{neg_type}{Label for significant effects with a negative differential effect
 (default "Negative").}

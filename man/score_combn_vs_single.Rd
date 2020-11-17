@@ -14,6 +14,7 @@ score_combn_vs_single(
   loess = TRUE,
   fdr_method = "BY",
   filter_genes = NULL,
+  ignore_orientation = FALSE,
   return_residuals = TRUE,
   verbose = FALSE
 )
@@ -42,6 +43,9 @@ Only works when test = "moderated-t" (default TRUE).}
 \item{fdr_method}{Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default "BY").}
 
 \item{filter_genes}{List of genes to filter from scoring (default NULL).}
+
+\item{ignore_orientation}{If TRUE, aggregates guides across both orientations, returning only
+one p-value and FDR column with orientation2 p-values set to NA (default FALSE).}
 
 \item{return_residuals}{If FALSE, doesn't return residuals dataframe (default TRUE).
 This is recommend if scoring large datasets and memory is a limitation.}

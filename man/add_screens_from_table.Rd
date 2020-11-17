@@ -4,13 +4,13 @@
 \alias{add_screens_from_table}
 \title{Adds a list of screens from a sample table file}
 \usage{
-add_screens_from_table(table_file)
+add_screens_from_table(sample_file)
 }
 \arguments{
-\item{table_file}{A tab-separated sample table with three columns, described above: 
-Screen, Replicates, and NormalizeTo. Screen is the name of the screen, replicates 
-are each technical replicate separated by semicolons, and NormalizeTo is either 
-the screen to normalize against or NA if unnecessary (e.g. for T0 screens).}
+\item{sample_file}{A .tsv file with three columns: Screen, Replicates, and NormalizeTo. 
+Screen is the name of the screen, replicates are each technical replicate separated by
+semicolons, and NormalizeTo is either the screen to normalize against or NA if unnecessary 
+(e.g. for T0 screens).}
 }
 \value{
 A named list corresponding to provided screen names, where each sub-list 
