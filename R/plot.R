@@ -48,7 +48,8 @@ plot_lfc_qc <- function(df, screens, output_folder, negative_controls = NULL,
     (df$gene2 %in% nonessentials & df$gene1 == "NegControl")
   df$nonessentials <- "Other"
   df$nonessentials[nonessential_ind] <- control_label
-  color_values <- c("Other" = "Gray", control_label = "Blue")
+  color_values <- c("Other" = "Gray")
+  color_values[control_label] <- "Blue"
   
   # Compares replicates across all screens
   for (screen in screens) {
@@ -307,8 +308,8 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
                          color_values = NULL, print_cor = FALSE) {
   
   # Computes correlations and optionally prints Pearson correlation
-  pcc <- stats::cor(df[[xcol]], df[[ycol]])
-  scc <- stats::cor(df[[xcol]], df[[ycol]], method = "spearman")
+  pcc <- stats::cor(df[[xcol]], df[[ycol]], use = "complete.obs")
+  scc <- stats::cor(df[[xcol]], df[[ycol]], method = "spearman", use = "complete.obs")
   if (print_cor) {
     cat(paste("Pearson correlation between", xcol, "and", ycol, ":", pcc, "\n"))
   }
@@ -379,7 +380,7 @@ plot_heatmap <- function(df, col_groups, filename, display_numbers) {
   names(screen_colors$group) <- unique(col_groups)
   
   # Gets PCCs for heatmap
-  cor_mat <- data.matrix(stats::cor(df))
+  cor_mat <- data.matrix(stats::cor(df, use = "complete.obs"))
   
   # Gets annotation for heatmap
   col_groups <- data.frame("Screen" = col_groups)

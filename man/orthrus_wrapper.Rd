@@ -19,6 +19,7 @@ orthrus_wrapper(
   negative_controls = NULL,
   test = "moderated-t",
   loess = TRUE,
+  ignore_orientation = FALSE,
   neg_type = "Negative",
   pos_type = "Positive",
   fdr_method = "BY",
@@ -69,6 +70,9 @@ rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t"
 
 \item{loess}{If true, loess-normalizes residuals before running hypothesis testing.
 Only works when test = "moderated-t" (default TRUE).}
+
+\item{ignore_orientation}{If TRUE, aggregates guides across both orientations, returning only
+one p-value and FDR column with orientation2 p-values set to NA (default FALSE).}
 
 \item{neg_type}{Label for significant effects with a negative differential effect
 (default "Negative").}

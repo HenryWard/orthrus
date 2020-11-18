@@ -130,7 +130,6 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   new_cols <- c(paste0("n_", control_name), 
                 paste0("mean_", control_name),
                 paste0("variance_", control_name))
-                # paste0("hit_quality_", control_name))
   for (name in condition_names) {
     new_cols <- c(new_cols, c(
       paste0("n_", name), 
@@ -153,9 +152,10 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
     scores$gene1[i] <- guide_vals$gene1
     scores$gene2[i] <- guide_vals$gene2
     rep_mean_control <- rowMeans(data.frame(guide_vals[control_cols]))
+    control_keep_ind <- !is.nan(rep_mean_control) & !is.na(rep_mean_control) & !is.null(rep_mean_control)
     
     # Skips if too few guides
-    if (length(rep_mean_control) < min_guides) {
+    if (sum(control_keep_ind) < min_guides) {
       next
     }
     
@@ -169,6 +169,17 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
     # Takes the mean across replicates for all conditions
     for (name in condition_names) {
       rep_mean_condition <- rowMeans(data.frame(guide_vals[condition_cols[[name]]]))
+      condition_keep_ind <- !is.nan(rep_mean_condition) & !is.na(rep_mean_condition) & 
+        !is.null(rep_mean_condition) & control_keep_ind
+      
+      # Subsets to same guides and skips if too few guides remaining
+      rep_mean_control <- rep_mean_control[condition_keep_ind]
+      rep_mean_condition <- rep_mean_condition[condition_keep_ind]
+      if (sum(condition_keep_ind) < min_guides) {
+        next
+      }
+      
+      # Computes stats
       diff <- rep_mean_condition - rep_mean_control
       scores[[paste0("n_", control_name)]][i] <- length(rep_mean_control)
       scores[[paste0("n_", name)]][i] <- length(rep_mean_condition)
@@ -180,7 +191,9 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
       
       # Appends mean LFCs for loess-normalization if specified
       if (loess) {
-        loess_residuals[[paste0("mean_", name)]][ind] <- rep_mean_condition
+        n_condition <- length(loess_residuals[[paste0("mean_", name)]][ind])
+        loess_residuals[[paste0("mean_", name)]][ind] <- 
+          c(rep_mean_condition, rep(NA, n_condition - length(rep_mean_condition)))
       }
       
       # Performs the specified type of testing or stores residuals for later testing
@@ -215,7 +228,10 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
           resid <- c(resid, rep(NA, max_guides - length(resid))) 
         } 
         condition_residuals[[name]][i,1:max_guides] <- resid
-        scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(resid, na.rm = TRUE)
+        mean_resid <- mean(resid, na.rm = TRUE)
+        if (!is.nan(mean_resid)) {
+          scores[[paste0("differential_", name, "_vs_", control_name)]][i] <- mean(resid, na.rm = TRUE)
+        }
       }
     }
   } else if (loess) {
@@ -496,10 +512,14 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       }
       
       # Subsets combinatorial guides to existing expected values
-      combn1 <- combn1[!is.na(null1)]
-      combn2 <- combn2[!is.na(null2)]
-      null1 <- null1[!is.na(null1)]
-      null2 <- null2[!is.na(null2)]
+      keep_ind1 <- !is.na(null1) & !is.nan(null1) & !is.null(null1) &
+        !is.na(combn1) & !is.nan(combn1) & !is.null(combn1)
+      keep_ind2 <- !is.na(null2) & !is.nan(null2) & !is.null(null2) &
+        !is.na(combn2) & !is.nan(combn2) & !is.null(combn2)
+      combn1 <- combn1[keep_ind1]
+      combn2 <- combn2[keep_ind2]
+      null1 <- null1[keep_ind1]
+      null2 <- null2[keep_ind2]
       
       # Joins guides if orientation is ignored
       all_combn <- NULL
@@ -632,7 +652,10 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
           } 
           condition_residuals[[name]][[1]][i,1:max_guides] <- resid1
           condition_residuals[[name]][[2]][i,1:max_guides] <- resid2
-          scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean(c(resid1, resid2), na.rm = TRUE)
+          mean_resid <- mean(c(resid1, resid2), na.rm = TRUE)
+          if (!is.nan(mean_resid)) {
+            scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean_resid
+          }
         }
       } else {
         ind <- joined_residuals$n == i
@@ -642,7 +665,10 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
           resid <- c(resid, rep(NA, max_guides*2 - length(resid))) 
         } 
         condition_residuals[[name]][[1]][i,1:(max_guides*2)] <- resid
-        scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean(resid, na.rm = TRUE)
+        mean_resid <- mean(resid, na.rm = TRUE)
+        if (!is.nan(mean_resid)) { 
+          scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean_resid
+        }
       }
     }
   } else if (loess) {
@@ -940,8 +966,10 @@ score_conditions_batch <- function(guides, screens, batch_file, output_folder,
       }
     }
   }
-  utils::write.table(all_scores, file.path(output_folder, "condition_gene_calls.tsv"), sep = "\t",
-                     row.names = FALSE, col.names = TRUE, quote = FALSE)
+  if (!is.null(all_scores)) {
+    utils::write.table(all_scores, file.path(output_folder, "condition_gene_calls.tsv"), sep = "\t",
+                       row.names = FALSE, col.names = TRUE, quote = FALSE) 
+  }
 }
 
 #' Scores multiple combinatorial screens against derived null models
@@ -1027,8 +1055,10 @@ score_combn_batch <- function(combn_guides, single_guides, screens, batch_file, 
       }
     }
   }
-  utils::write.table(all_scores, file.path(output_folder, "combn_gene_calls.tsv"), sep = "\t",
-                     row.names = FALSE, col.names = TRUE, quote = FALSE)
+  if (!is.null(all_scores)) {
+    utils::write.table(all_scores, file.path(output_folder, "combn_gene_calls.tsv"), sep = "\t",
+                       row.names = FALSE, col.names = TRUE, quote = FALSE)
+  }
 }
 
 #' All-in-one wrapper for Orthrus
@@ -1074,6 +1104,8 @@ score_combn_batch <- function(combn_guides, single_guides, screens, batch_file, 
 #'   rank-sum testing or "moderated-t" for moderated t-testing (default "moderated-t").
 #' @param loess If true, loess-normalizes residuals before running hypothesis testing.
 #'   Only works when test = "moderated-t" (default TRUE).
+#' @param ignore_orientation If TRUE, aggregates guides across both orientations, returning only
+#'   one p-value and FDR column with orientation2 p-values set to NA (default FALSE).
 #' @param neg_type Label for significant effects with a negative differential effect
 #'   (default "Negative").
 #' @param pos_type Label for significant effects with a positive differential effect
@@ -1091,17 +1123,16 @@ orthrus_wrapper <- function(reads_file, sample_file, batch_file, output_folder,
                             filter_names = NULL, filter_genes = NULL,
                             min_reads = 30, max_reads = 10000,
                             display_numbers = FALSE, negative_controls = NULL, 
-                            test = "moderated-t", loess = TRUE, 
+                            test = "moderated-t", loess = TRUE,
+                            ignore_orientation = FALSE,
                             neg_type = "Negative", pos_type = "Positive", 
                             fdr_method = "BY", fdr_threshold = 0.1, 
                             differential_threshold = 0.5, plot_type = "png") {
   
   # Makes output folders if nonexistent
-  plot_folder <- file.path(output_folder, "scored")
   qc_folder <- file.path(output_folder, "qc")
   lfc_folder <- file.path(qc_folder, "lfc")
   if (!dir.exists(output_folder)) { dir.create(output_folder, recursive = TRUE) }
-  if (!dir.exists(plot_folder)) { dir.create(plot_folder) }
   if (!dir.exists(qc_folder)) { dir.create(qc_folder) }
   if (!dir.exists(lfc_folder)) { dir.create(lfc_folder) }
   
@@ -1134,6 +1165,7 @@ orthrus_wrapper <- function(reads_file, sample_file, batch_file, output_folder,
                     neg_type = neg_type, pos_type = pos_type,
                     fdr_threshold = fdr_threshold, 
                     differential_threshold = differential_threshold,
-                    plot_type = plot_type)
+                    plot_type = plot_type,
+                    ignore_orientation = ignore_orientation)
   
 }
