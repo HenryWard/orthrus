@@ -118,7 +118,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   
   # Makes loess residual dataframe if specified
   loess_residuals <- NULL
-  if (loess & test == "moderated-t") {
+  if (return_residuals & test == "moderated-t") {
     loess_residuals <- data.frame(n = rep(0, max_guides*length(guides)))
     loess_residuals[[paste0("mean_", control_name)]] <- rep(0, nrow(loess_residuals))
     for (name in condition_names) {
@@ -209,7 +209,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
   }
    
   # Computes loess-normalized residuals if specified
-  if (loess & test == "moderated-t") {
+  if (return_residuals & test == "moderated-t") {
     loess_residuals <- loess_residuals[1:counter,]
     control_values <- loess_residuals[[paste0("mean_", control_name)]]
     for (name in condition_names) {
@@ -387,7 +387,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
   
   # Makes loess residual dataframes if specified, one for each orientation
   loess_residuals <- list()
-  if (loess & test == "moderated-t") {
+  if (return_residuals & test == "moderated-t") {
     loess_residuals[[1]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
     loess_residuals[[2]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
     for (name in condition_names) {
@@ -541,7 +541,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       # Appends values for loess-normalization to residual dataframe if necessary
       ind1 <- counter1:(counter1 + length(combn1) - 1)
       ind2 <- counter2:(counter2 + length(combn2) - 1)
-      if (loess & test == "moderated-t") {
+      if (return_residuals & test == "moderated-t") {
         loess_residuals[[1]][["n"]][ind1] <- i
         loess_residuals[[2]][["n"]][ind2] <- i
         loess_residuals[[1]][[paste0("mean_single_", name)]][ind1] <- null1
@@ -606,7 +606,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
   joined_residuals <- NULL
   if (loess & test == "moderated-t") {
     
-    # Normalizes orientations separately if orientation ignored
+    # Normalizes orientations separately if orientation taken into account
     loess_residuals[[1]] <- loess_residuals[[1]][1:counter1,]
     loess_residuals[[2]] <- loess_residuals[[2]][1:counter2,]
     if (!ignore_orientation) {
@@ -690,9 +690,11 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       
       # Appends both conditions together if loess-normalization not used
       if(!loess) {
-        colnames(condition_residuals[[2]]) <- paste0(colnames(condition_residuals[[2]]), "_orientation2")
-        condition_residuals[[1]][,(max_guides + 1):ncol(condition_residuals[[1]])] <-
-          condition_residuals[[2]][,1:max_guides]
+        for (name in condition_names) {
+          colnames(condition_residuals[[name]][[2]]) <- paste0(colnames(condition_residuals[[name]][[2]]), "_orientation2")
+          condition_residuals[[name]][[1]][,(max_guides + 1):ncol(condition_residuals[[name]][[1]])] <-
+            condition_residuals[[name]][[2]][,1:max_guides]
+        }
       }
       for (name in condition_names) {
         resid <- condition_residuals[[name]][[1]]

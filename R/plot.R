@@ -59,8 +59,8 @@ plot_lfc_qc <- function(df, screens, output_folder, negative_controls = NULL,
       for (i in 1:ncol(pairs)) {
         col1 <- pairs[1,i]
         col2 <- pairs[2,i]
-        x_label <- paste0(col1, " log fold change")
-        y_label <- paste0(col2, " log fold change")
+        x_label <- paste0(col1, " log2 fold change")
+        y_label <- paste0(col2, " log2 fold change")
         temp <- plot_samples(df, col1, col2, x_label, y_label, print_cor = TRUE,
                              color_col = "nonessentials", color_lab = "Guide type",
                              color_values = color_values)
@@ -108,9 +108,9 @@ plot_lfc_qc <- function(df, screens, output_folder, negative_controls = NULL,
 #' Computes essential gene recovery AUC.
 #' 
 #' Computes area under the curve for ROC curves that measure how well each technical replicate
-#' recovers signal for essential-targeting guides and saves results to file. Only computes AUC
-#' for guides that target essential genes twice, guides that target two different essential 
-#' genes, or guides that target an essential gene and an intergenic region.
+#' recovers signal for essential-targeting guides. Only computes AUC for guides that target 
+#' essential genes twice, guides that target two different essential genes, or guides that 
+#' target an essential gene and an intergenic region.
 #' 
 #' @param df LFC dataframe.
 #' @param screens List of screens generated with \code{add_screens}. 
@@ -146,28 +146,48 @@ essential_lfc_qc <- function(df, screens, negative_controls = NULL) {
     return(NULL)
   }
   if (sum(nonessential_ind) < 10) {
-    warning(paste("too few essential-targeting guides in df, skipping non-essential AUC computation"))
+    warning(paste("too few nonessential-targeting guides in df, skipping non-essential AUC computation"))
     skip_nonessential <- TRUE
   }
   
   # Gets PR curves for all essential genes relative to all other genes
-  results <- data.frame(replicate = NA, 
+  results <- data.frame(screen = NA,
+                        replicate = NA, 
                         essential_AUC_all = NA,
                         essential_AUC_nonessential = NA)
   counter <- 1
-  for (screen in screens) {
+  for (screen_name in names(screens)) {
+    screen <- screens[[screen_name]]
     for (rep in screen[["replicates"]]) {
-      roc <- PRROC::roc.curve(-df[[rep]], weights.class0 = as.numeric(essential_ind), curve = TRUE)
-      auc1 <- roc$auc
+      
+      # Gets replicate-specific indices (taking NAs into account)
+      temp <- df[!is.na(df[[rep]]),]
+      essential_ind_rep <- (temp$gene1 %in% essentials & temp$gene2 %in% essentials) |
+        (temp$gene1 %in% essentials & temp$gene2 == "NegControl") |
+        (temp$gene2 %in% essentials & temp$gene1 == "NegControl")
+      nonessential_ind_rep <- (temp$gene1 %in% nonessentials & temp$gene2 %in% nonessentials) |
+        (temp$gene1 %in% nonessentials & temp$gene2 == "NegControl") |
+        (temp$gene2 %in% nonessentials & temp$gene1 == "NegControl")
+      
+      # Computes AUC relative to all genes
+      auc1 <- NA
       auc2 <- NA
-      if (!skip_nonessential) {
-        essential_rownames <- rownames(df)[essential_ind]
-        temp <- df[essential_ind | nonessential_ind,]
+      if (sum(essential_ind_rep) < 10) {
+        warning(paste("too few essential-targeting guides for replicate", rep, "skipping AUC computation"))
+      } else {
+        roc <- PRROC::roc.curve(-temp[[rep]], weights.class0 = as.numeric(essential_ind_rep), curve = TRUE)
+        auc1 <- roc$auc
+      }
+      
+      # Computes AUC relative to non-essential genes
+      if (!skip_nonessential & sum(nonessential_ind_rep) > 10) {
+        essential_rownames <- rownames(temp)[essential_ind_rep]
+        temp <- temp[essential_ind_rep | nonessential_ind_rep,]
         temp_essential_ind <- rownames(temp) %in% essential_rownames
         roc <- PRROC::roc.curve(-temp[[rep]], weights.class0 = as.numeric(temp_essential_ind), curve = TRUE)
         auc2 <- roc$auc
       }
-      results[counter,] <- c(rep, auc1, auc2)
+      results[counter,] <- c(screen_name, rep, auc1, auc2)
       counter <- counter + 1
     }
   }
@@ -242,7 +262,7 @@ plot_reads_qc <- function(df, screens, output_folder,
     ggplot2::xlab("Replicate") +
     ggplot2::ylab("Total reads") +
     ggplot2::scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
-    ggthemes::theme_tufte(base_size = 20) +
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(angle = 45, hjust = 1))
   file_name <- paste0("total_reads.", plot_type)
   suppressWarnings(ggplot2::ggsave(file.path(output_folder, file_name), plot = p, width = 10, height = 7, dpi = 300))
@@ -280,7 +300,7 @@ plot_reads <- function(df, col, log_scale = TRUE, pseudocount = 1) {
     ggplot2::geom_histogram(bins = 30) +
     ggplot2::xlab(x_label) +
     ggplot2::ylab(y_label) +
-    ggthemes::theme_tufte(base_size = 20)
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans")
   return(p)
 }
 
@@ -311,7 +331,7 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
   pcc <- stats::cor(df[[xcol]], df[[ycol]], use = "complete.obs")
   scc <- stats::cor(df[[xcol]], df[[ycol]], method = "spearman", use = "complete.obs")
   if (print_cor) {
-    cat(paste("Pearson correlation between", xcol, "and", ycol, ":", pcc, "\n"))
+    cat(paste0("Pearson correlation between ", xcol, " and ", ycol, ": ", pcc, "\n"))
   }
   
   # Makes plot
@@ -322,7 +342,7 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
       ggplot2::geom_point(size = 1.5, alpha = 0.7) +
       ggplot2::xlab(xlab) +
       ggplot2::ylab(ylab) +
-      ggthemes::theme_tufte(base_size = 20) 
+      ggthemes::theme_tufte(base_size = 20, base_family = "sans") 
   } else {
     
     # Gets parameters for a discrete color scale
@@ -350,7 +370,7 @@ plot_samples <- function(df, xcol, ycol, xlab, ylab,
     p <- p + ggplot2::scale_color_manual(values = color_values, name = color_lab) +
       ggplot2::xlab(xlab) +
       ggplot2::ylab(ylab) +
-      ggthemes::theme_tufte(base_size = 20)
+      ggthemes::theme_tufte(base_size = 20, base_family = "sans")
   }
   return(list(p, pcc, scc))
 }
@@ -434,31 +454,16 @@ plot_condition_response <- function(scores, control_name, condition_name, output
     dir.create(output_folder)
   }
   
-  # Manually sets colors for plot
+  # Manually sets colors and fill for plot
   diff_col <- paste0("differential_", condition_name, "_vs_", control_name)
   scores <- scores[order(scores[[diff_col]]),]
-  colors <- c("Black", "Gray", "Black")
-  fill <- c("Blue", "Gray", "Yellow")
   response_col <- paste0("effect_type_", condition_name)
-  neg_ind <- scores[[diff_col]] < 0 &
-    scores[[response_col]] != "None"
-  pos_ind <- scores[[diff_col]] > 0 &
-    scores[[response_col]] != "None"
-  if (any(neg_ind) & !any(pos_ind)) {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None"))
-    colors <- c("Blue", "Gray")
-    fill <- c("Black", "Gray")
-  } else if (!any(neg_ind) & any(pos_ind)) {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None", pos_type))
-    colors <- c("Gray", "Black")
-    fill <- c("Gray", "Yellow")
-  } else if (!any(neg_ind) & !(any(pos_ind))) {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None"))
-    colors <- c("Gray")
-    fill <- c("Gray")
-  } else {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None", pos_type))
-  }
+  colors <- c(neg_type = "Black", "None" = "Gray", pos_type = "Black")
+  names(colors)[1] <- neg_type
+  names(colors)[3] <- pos_type
+  fill <- c(neg_type = "Blue", "None" = "Gray", pos_type = "Yellow")
+  names(fill)[1] <- neg_type
+  names(fill)[3] <- pos_type
 
   # Builds basic plot
   p <- ggplot2::ggplot(scores, ggplot2::aes_string(x = paste0("mean_", control_name), 
@@ -482,7 +487,7 @@ plot_condition_response <- function(scores, control_name, condition_name, output
     ggplot2::ylab(paste0(condition_name, " mean log FC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
-    ggthemes::theme_tufte(base_size = 20) +
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
                    legend.text = ggplot2:: element_text(size = 16))
@@ -516,7 +521,7 @@ plot_condition_response <- function(scores, control_name, condition_name, output
     ggplot2::ylab(ylab) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
-    ggthemes::theme_tufte(base_size = 20) +
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
                    legend.text = ggplot2:: element_text(size = 16))
@@ -576,25 +581,12 @@ plot_combn_response <- function(scores, condition_name, output_folder,
   # Manually sets colors for plot
   diff_col <- paste0("differential_combn_vs_single_", condition_name)
   scores <- scores[order(scores[[diff_col]]),]
-  colors <- c("Black", "Gray", "Black")
-  fill <- c("Blue", "Gray", "Yellow")
-  neg_ind <- scores[[diff_col]] < 0 & scores[[response_col]] != "None"
-  pos_ind <- scores[[diff_col]] > 0 & scores[[response_col]] != "None"
-  if (any(neg_ind) & !any(pos_ind)) {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None"))
-    colors <- c("Blue", "Gray")
-    fill <- c("Black", "Gray")
-  } else if (!any(neg_ind) & any(pos_ind)) {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None", pos_type))
-    colors <- c("Gray", "Black")
-    fill <- c("Gray", "Yellow")
-  } else if (!any(neg_ind) & !(any(pos_ind))) {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c("None"))
-    colors <- c("Gray")
-    fill <- c("Gray")
-  } else {
-    scores[[response_col]] <- factor(scores[[response_col]], levels = c(neg_type, "None", pos_type))
-  }
+  colors <- c(neg_type = "Black", "None" = "Gray", pos_type = "Black")
+  names(colors)[1] <- neg_type
+  names(colors)[3] <- pos_type
+  fill <- c(neg_type = "Blue", "None" = "Gray", pos_type = "Yellow")
+  names(fill)[1] <- neg_type
+  names(fill)[3] <- pos_type
   
   # Plots data
   p <- ggplot2::ggplot(scores, ggplot2::aes_string(x = paste0("mean_single_", condition_name), 
@@ -618,7 +610,7 @@ plot_combn_response <- function(scores, condition_name, output_folder,
     ggplot2::ylab(paste0(condition_name, " mean observed combinatorial-targeting log FC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
-    ggthemes::theme_tufte(base_size = 20) +
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
                    legend.text = ggplot2:: element_text(size = 16))
@@ -654,7 +646,7 @@ plot_combn_response <- function(scores, condition_name, output_folder,
     ggplot2::ylab(ylab) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
-    ggthemes::theme_tufte(base_size = 20) +
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
                    legend.text = ggplot2:: element_text(size = 16))
@@ -722,7 +714,7 @@ plot_condition_residuals <- function(scores, residuals, control_name,
     gene1 <- scores$gene1[ind]
     gene2 <- scores$gene2[ind]
     x_label <- paste0("Guides")
-    y_label <- paste0("Average differential LFC across replicates")
+    y_label <- paste0("Guide-level differential LFC for ", gene1, "/", gene2)
     
     # Adds ID column for plotting
     df$ID <- paste("Guide", 1:nrow(df))
@@ -737,7 +729,7 @@ plot_condition_residuals <- function(scores, residuals, control_name,
       ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
       ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::coord_flip() +
-      ggthemes::theme_tufte(base_size = 20)
+      ggthemes::theme_tufte(base_size = 20, base_family = "sans")
     
     # Gets type and rank of effect
     effect <- ""
@@ -781,7 +773,7 @@ plot_condition_gene_residuals <- function(scores, residuals, gene, control_name,
   ind <- which(scores$gene1 == gene)
   df <- residuals[residuals$n == ind,]
   x_label <- paste0("Guides")
-  y_label <- paste0("Average differential LFC across replicates")
+  y_label <- paste0("Guide-level differential LFC for ", gene)
   
   # Computes residuals
   control_col <- paste0("mean_", control_name)
@@ -801,7 +793,7 @@ plot_condition_gene_residuals <- function(scores, residuals, gene, control_name,
     ggplot2::geom_hline(yintercept = 0, linetype = 2, size = 1, alpha = 0.75, color = "Gray") +
     ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
     ggplot2::coord_flip() +
-    ggthemes::theme_tufte(base_size = 20)
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans")
   return(p)
 }
 
@@ -873,7 +865,7 @@ plot_combn_residuals <- function(scores, residuals, condition_name, output_folde
     gene1 <- scores$gene1[ind]
     gene2 <- scores$gene2[ind]
     x_label <- paste0("Guides")
-    y_label <- paste0("Average differential LFC across replicates")
+    y_label <- paste0("Guide-level differential LFC for ", gene1, "/", gene2)
     
     # Adds ID column for plotting
     df$ID <- nrow(df):1
@@ -889,7 +881,7 @@ plot_combn_residuals <- function(scores, residuals, condition_name, output_folde
       ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
       ggplot2::coord_flip() +
       ggplot2::facet_grid(. ~ orientation) +
-      ggthemes::theme_tufte(base_size = 20) +
+      ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
       ggplot2::theme(axis.text.y = ggplot2::element_blank(),
                      axis.ticks.y = ggplot2::element_blank(),
                      panel.border = ggplot2::element_rect(fill = NA, color = "black"))
@@ -948,7 +940,7 @@ plot_combn_gene_residuals <- function(scores, residuals, gene1, gene2, condition
   df2$orientation <- paste0(df2$orientation[1], " (n = ", nrow(df2), ")")
   df <- rbind(df1, df2)
   x_label <- paste0("Guides")
-  y_label <- paste0("Average differential LFC across replicates")
+  y_label <- paste0("Guide-level differential LFC for ", gene1, "/", gene2)
 
   # Computes residuals
   single_col <- paste0("mean_single_", condition_name)
@@ -969,7 +961,7 @@ plot_combn_gene_residuals <- function(scores, residuals, gene1, gene2, condition
     ggplot2::geom_hline(yintercept = -1, linetype = 2, size = 1, alpha = 0.75, color = "Blue") +
     ggplot2::coord_flip() +
     ggplot2::facet_grid(. ~ orientation) +
-    ggthemes::theme_tufte(base_size = 20) +
+    ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.y = ggplot2::element_blank(),
                    axis.ticks.y = ggplot2::element_blank(),
                    panel.border = ggplot2::element_rect(fill = NA, color = "black"))
