@@ -1,4 +1,4 @@
-#' Raw reads for paralog screen from CHyMErA paper.
+#' Raw reads for paralog screen from CHyMErA paper
 #'
 #' A dataset containing raw read counts from a paralog-targeting library
 #' using the CHyMErA system, as described in Gonatopoulos-Pournatzis et al.
@@ -46,5 +46,39 @@
 #'   \item{RPE1.T24B}{raw read counts for RPE1 at T24, technical replicate B}
 #'   \item{RPE1.T24C}{raw read counts for RPE1 at T24, technical replicate C}
 #' }
+#' 
 #' @source \url{https://crispr.ccbr.utoronto.ca/chymera/}
 "chymera_paralog"
+
+#' Sample table for chymera_paralog
+#' 
+#' @docType data
+#'
+#' @format A dataframe formatted as described in \code{\link{add_screens_from_table}}.
+#' \describe{
+#'  \item{Screen}{name of screens to score}
+#'  \item{Replicates}{associated technical replicates for each screens as columns of 
+#'                    chymera_paralog}
+#'  \item{NormalizeTo}{name of screen to normalize against}
+#' }
+#'
+#'
+#' @examples
+#' add_screens_from_table(chymera_sample_table)
+"chymera_sample_table"
+
+#' Batch table for chymera_paralog
+#' 
+#' @docType data
+#'
+#' @format A dataframe formatted as described in \code{\link{score_combn_batch}}.
+#' \describe{
+#'  \item{Screen}{name of screen to score}
+#'  \item{Control}{name of screen to compare against, or "combn" to score combinatorial guides}
+#' }
+#'
+#'
+#' @examples
+#' screens <- add_screens_from_table(chymera_sample_table)
+#' load_batch_table(chymera_batch_table, screens)
+"chymera_batch_table"

@@ -1,9 +1,9 @@
 Package: orthrus
 Title: Scoring Combinatorial CRISPR Screens
-Version: 0.4.1
+Version: 0.4.3
 Authors@R: person("Henry", "Ward", email = "henry.neil.ward@gmail.com", role = c("aut", "cre"))
 Description: Package for processing, scoring and analyzing combinatorial CRISPR screens.
-Depends: R (>= 3.5)
+Depends: R (>= 3.6)
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

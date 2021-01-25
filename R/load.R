@@ -15,6 +15,7 @@
 #'   stored in the key "exonic_exonic", exonic-intergenic guides are stored in the 
 #'   key "exonic_intergenic" and single-gene exonic-exonic guides are stored in the
 #'   key "single_gene_dual_targeted". 
+#' @export
 split_guides <- function(guides, screens, id_col1 = NULL, id_col2 = NULL) {
   gene_pairs <- unique_gene_pairs(guides)
   guides <- retrieve_guides_by_gene(guides, gene_pairs, screens, id_col1, id_col2)
@@ -327,16 +328,20 @@ split_guides_by_type <- function(guides) {
 #' @param df Reads dataframe.
 #' @param screens List of screens generated with \code{add_screens}. 
 #' @param filter_names List of screen names to filter based on read counts by. 
-#' @param cf1 Scaling factor (default 1e6).
-#' @param cf2 Pseudocount (default 1).
+#' @param scaling_factor Scaling factor for normalizing reads, helps make different
+#'   replicates comparable but the specific choice typically has little to no 
+#'   impact on results (default 1e6).
+#' @param pseudocount Pseudocount for normalized reads, where lower values are
+#'   such as 1-10 are recommended for most combinatorial screens with sufficient
+#'   coverage, e.g. 200x and upwards (default 1).
 #' @param min_reads Minimum number of reads to keep (default 30, anything
 #'   below this value will be filtered out).
 #' @param max_reads Maximum number of reads to keep (default 10000, anything
 #'   above this value will be filtered out).
 #' @return Normalized dataframe.
 #' @export 
-normalize_screens <- function(df, screens, filter_names = NULL, cf1 = 1e6, cf2 = 1, 
-                              min_reads = 30, max_reads = 10000) {
+normalize_screens <- function(df, screens, filter_names = NULL, scaling_factor = 1e6, 
+                              pseudocount = 1, min_reads = 30, max_reads = 10000) {
   
   # Checks for input errors
   check_screen_params(df, screens)
@@ -363,7 +368,7 @@ normalize_screens <- function(df, screens, filter_names = NULL, cf1 = 1e6, cf2 =
   # Log2 and depth-normalizes every screen
   for (screen in screens) {
     for (col in screen[["replicates"]]) {
-      df[,col] <- normalize_reads(df[,col], cf1, cf2)
+      df[,col] <- normalize_reads(df[,col], scaling_factor, pseudocount)
     }
   }
   
@@ -428,12 +433,12 @@ filter_reads <- function(df, cols, min_reads = 30, max_reads = 10000) {
 #' depth-normalizes the data. 
 #' 
 #' @param df List of read counts.
-#' @param cf1 Scaling factor (default 1e6).
-#' @param cf2 Pseudocount (default 1).
+#' @param scaling_factor Scaling factor (default 1e6).
+#' @param pseudocount Pseudocount (default 1).
 #' @return Log- and depth-normalized read counts.
 #' @export
-normalize_reads <- function(df, cf1 = 1e6, cf2 = 1) {
-  log2((df / sum(df, na.rm = TRUE)) * cf1 + cf2)
+normalize_reads <- function(df, scaling_factor = 1e6, pseudocount = 1) {
+  log2((df / sum(df, na.rm = TRUE)) * scaling_factor + pseudocount)
 }
 
 # Inner function to get sorted merge of two columns for a single row. 

@@ -8,8 +8,8 @@ normalize_screens(
   df,
   screens,
   filter_names = NULL,
-  cf1 = 1e+06,
-  cf2 = 1,
+  scaling_factor = 1e+06,
+  pseudocount = 1,
   min_reads = 30,
   max_reads = 10000
 )
@@ -21,9 +21,13 @@ normalize_screens(
 
 \item{filter_names}{List of screen names to filter based on read counts by.}
 
-\item{cf1}{Scaling factor (default 1e6).}
+\item{scaling_factor}{Scaling factor for normalizing reads, helps make different
+replicates comparable but the specific choice typically has little to no 
+impact on results (default 1e6).}
 
-\item{cf2}{Pseudocount (default 1).}
+\item{pseudocount}{Pseudocount for normalized reads, where lower values are
+such as 1-10 are recommended for most combinatorial screens with sufficient
+coverage, e.g. 200x and upwards (default 1).}
 
 \item{min_reads}{Minimum number of reads to keep (default 30, anything
 below this value will be filtered out).}

@@ -20,8 +20,7 @@ score_conditions_vs_control(
 )
 }
 \arguments{
-\item{guides}{A list of guides returned from \code{retrieve_guides_by_label} or 
-from an entry of \code{split_guides_by_type}.}
+\item{guides}{A list of guides returned from \code{split_guides}.}
 
 \item{screens}{List of screens generated with \code{add_screens}.}
 

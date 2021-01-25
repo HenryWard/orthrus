@@ -8,7 +8,7 @@ score_combn_batch(
   combn_guides,
   single_guides,
   screens,
-  batch_file,
+  batch_table,
   output_folder,
   separate_orientation = FALSE,
   min_guides = 3,
@@ -25,17 +25,15 @@ score_combn_batch(
 )
 }
 \arguments{
-\item{combn_guides}{A list of exonic-exonic guides returned from \code{retrieve_guides_by_label} 
-or from the exonic-exonic entry of \code{split_guides_by_type}.}
+\item{combn_guides}{A list of exonic-exonic guides returned from \code{split_guides}.}
 
-\item{single_guides}{A list of exonic-intergenic guides returned from \code{retrieve_guides_by_label} 
-or from the exonic-intergenic entry of \code{split_guides_by_type}.}
+\item{single_guides}{A list of exonic-intergenic guides returned from \code{split_guides}.}
 
 \item{screens}{List of screens generated with \code{add_screens}.}
 
-\item{batch_file}{Path to .tsv file mapping screens to their controls for scoring, with two 
-columns for "Screen" and "Control." Screens to score against dervied null-models with the
-combn scoring mode must have their respective control labeled as "combn."}
+\item{batch_table}{Either a dataframe or a path to .tsv file mapping screens to their controls 
+for scoring, with two columns for "Screen" and "Control." Screens to score against derived 
+null-models with the combn scoring mode must have their respective control labeled as "combn."}
 
 \item{output_folder}{Folder to output scored data and plots to.}
 

@@ -20,11 +20,9 @@ score_combn_vs_single(
 )
 }
 \arguments{
-\item{combn_guides}{A list of exonic-exonic guides returned from \code{retrieve_guides_by_label} 
-or from the exonic-exonic entry of \code{split_guides_by_type}.}
+\item{combn_guides}{A list of exonic-exonic guides returned from \code{split_guides}.}
 
-\item{single_guides}{A list of exonic-intergenic guides returned from \code{retrieve_guides_by_label} 
-or from the exonic-intergenic entry of \code{split_guides_by_type}.}
+\item{single_guides}{A list of exonic-intergenic guides returned from \code{split_guides}.}
 
 \item{screens}{List of screens generated with \code{add_screens}.}
 

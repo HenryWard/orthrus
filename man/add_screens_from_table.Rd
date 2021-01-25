@@ -4,13 +4,13 @@
 \alias{add_screens_from_table}
 \title{Adds a list of screens from a sample table file}
 \usage{
-add_screens_from_table(sample_file)
+add_screens_from_table(sample_table)
 }
 \arguments{
-\item{sample_file}{A .tsv file with three columns: Screen, Replicates, and NormalizeTo. 
-Screen is the name of the screen, replicates are each technical replicate separated by
-semicolons, and NormalizeTo is either the screen to normalize against or NA if unnecessary 
-(e.g. for T0 screens).}
+\item{sample_table}{Either a dataframe or a path to a .tsv file with three columns: Screen, 
+Replicates, and NormalizeTo. Screen is the name of the screen, replicates are each technical 
+replicate separated by semicolons, and NormalizeTo is either the screen to normalize against 
+or NA if unnecessary (e.g. for T0 screens).}
 }
 \value{
 A named list corresponding to provided screen names, where each sub-list 
@@ -20,5 +20,6 @@ A named list corresponding to provided screen names, where each sub-list
 \description{
 For a sample table formatted as a .tsv file with columns for screen, replicates,
 and the name of a screen to compute log fold-changes against, adds each screen
-to a list and returns that list.
+to a list and returns that list. The sample table can be either a path to a .tsv
+file or a dataframe with the columns mentioned below.
 }

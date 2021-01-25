@@ -3,7 +3,7 @@
 \docType{data}
 \name{chymera_paralog}
 \alias{chymera_paralog}
-\title{Raw reads for paralog screen from CHyMErA paper.}
+\title{Raw reads for paralog screen from CHyMErA paper}
 \format{
 A data frame with 92,746 rows and 32 variables:
 \describe{

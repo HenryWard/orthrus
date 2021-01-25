@@ -419,7 +419,9 @@ plot_heatmap <- function(df, col_groups, filename, display_numbers) {
                      display_numbers = display_numbers,
                      color = pal, 
                      breaks = breaks,
-                     filename = filename)
+                     filename = filename,
+                     width = 10,
+                     height = 10)
 }
 
 #' Plots drug response for scored data.
@@ -483,8 +485,8 @@ plot_condition_response <- function(scores, control_name, condition_name, output
     ggplot2::geom_point(ggplot2::aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +
-    ggplot2::xlab(paste0(control_name, " mean log FC")) +
-    ggplot2::ylab(paste0(condition_name, " mean log FC")) +
+    ggplot2::xlab(paste0(control_name, " mean LFC")) +
+    ggplot2::ylab(paste0(condition_name, " mean LFC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
@@ -606,8 +608,8 @@ plot_combn_response <- function(scores, condition_name, output_folder,
     ggplot2::geom_point(ggplot2::aes_string(color = response_col, fill = response_col), shape = 21, alpha = 0.7) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_fill_manual(values = fill) +
-    ggplot2::xlab(paste0(condition_name, " mean expected single-targeting log FC")) +
-    ggplot2::ylab(paste0(condition_name, " mean observed combinatorial-targeting log FC")) +
+    ggplot2::xlab(paste0(condition_name, " mean expected single LFC")) +
+    ggplot2::ylab(paste0(condition_name, " mean observed combinatorial LFC")) +
     ggplot2::labs(fill = "Significant response") +
     ggplot2::guides(color = FALSE, size = FALSE) +
     ggthemes::theme_tufte(base_size = 20, base_family = "sans") +

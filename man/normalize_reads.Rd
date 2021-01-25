@@ -4,14 +4,14 @@
 \alias{normalize_reads}
 \title{Log-normalizes reads.}
 \usage{
-normalize_reads(df, cf1 = 1e+06, cf2 = 1)
+normalize_reads(df, scaling_factor = 1e+06, pseudocount = 1)
 }
 \arguments{
 \item{df}{List of read counts.}
 
-\item{cf1}{Scaling factor (default 1e6).}
+\item{scaling_factor}{Scaling factor (default 1e6).}
 
-\item{cf2}{Pseudocount (default 1).}
+\item{pseudocount}{Pseudocount (default 1).}
 }
 \value{
 Log- and depth-normalized read counts.

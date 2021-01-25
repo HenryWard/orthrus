@@ -7,7 +7,7 @@
 score_conditions_batch(
   guides,
   screens,
-  batch_file,
+  batch_table,
   output_folder,
   separate_orientation = FALSE,
   min_guides = 3,
@@ -23,14 +23,13 @@ score_conditions_batch(
 )
 }
 \arguments{
-\item{guides}{A list of guides returned from \code{retrieve_guides_by_label} or 
-from an entry of \code{split_guides_by_type}.}
+\item{guides}{A list of guides returned from \code{split_guides}.}
 
 \item{screens}{List of screens generated with \code{add_screens}.}
 
-\item{batch_file}{Path to .tsv file mapping screens to their controls for scoring, with two 
-columns for "Screen" and "Control." Screens to score against dervied null-models with the
-combn scoring mode must have their respective control labeled as "combn."}
+\item{batch_table}{Either a dataframe or a path to .tsv file mapping screens to their controls 
+for scoring, with two columns for "Screen" and "Control." Screens to score against derived 
+null-models with the combn scoring mode must have their respective control labeled as "combn."}
 
 \item{output_folder}{Folder to output scored data and plots to.}
 

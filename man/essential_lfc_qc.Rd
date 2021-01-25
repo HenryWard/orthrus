@@ -20,7 +20,7 @@ Returns a dataframe with three columns for replicate name, essential AUC relativ
 }
 \description{
 Computes area under the curve for ROC curves that measure how well each technical replicate
-recovers signal for essential-targeting guides and saves results to file. Only computes AUC
-for guides that target essential genes twice, guides that target two different essential 
-genes, or guides that target an essential gene and an intergenic region.
+recovers signal for essential-targeting guides. Only computes AUC for guides that target 
+essential genes twice, guides that target two different essential genes, or guides that 
+target an essential gene and an intergenic region.
 }

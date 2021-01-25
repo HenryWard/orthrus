@@ -6,18 +6,37 @@
 #' 
 #' For a sample table formatted as a .tsv file with columns for screen, replicates,
 #' and the name of a screen to compute log fold-changes against, adds each screen
-#' to a list and returns that list.
+#' to a list and returns that list. The sample table can be either a path to a .tsv
+#' file or a dataframe with the columns mentioned below. 
 #' 
-#' @param sample_file A .tsv file with three columns: Screen, Replicates, and NormalizeTo. 
-#'   Screen is the name of the screen, replicates are each technical replicate separated by
-#'   semicolons, and NormalizeTo is either the screen to normalize against or NA if unnecessary 
-#'   (e.g. for T0 screens).
+#' @param sample_table Either a dataframe or a path to a .tsv file with three columns: Screen, 
+#'   Replicates, and NormalizeTo. Screen is the name of the screen, replicates are each technical 
+#'   replicate separated by semicolons, and NormalizeTo is either the screen to normalize against 
+#'   or NA if unnecessary (e.g. for T0 screens).
 #' @return A named list corresponding to provided screen names, where each sub-list 
 #'   contains a list of the replicate columns (in "replicates") and the screen to 
 #'   normalize against (in "normalize_name").
 #' @export
-add_screens_from_table <- function(sample_file) {
-  table <- utils::read.csv(sample_file, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+add_screens_from_table <- function(sample_table) {
+  
+  # Checks if file path or dataframe
+  table <- NULL
+  if (typeof(sample_table) == "character") {
+    if (file.exists(sample_table)) {
+      ext <- tools::file_ext(sample_table)
+      if (ext == "tsv") {
+        table <- utils::read.csv(sample_table, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+      } else {
+        stop(paste("file", sample_table, "not a .tsv file"))
+      }
+    } else {
+      stop(paste("sample_table is not a path to an existing file"))
+    }
+  } else if (is.data.frame(sample_table)) {
+    table <- sample_table
+  } else {
+    stop(paste("sample_table is not a file path (as a character) or a dataframe"))
+  }
   
   # Checks columns of table
   cols <- c("Screen", "Replicates", "NormalizeTo")
@@ -162,28 +181,39 @@ check_screen_params <- function(df, screens) {
 #' Checks a batch scoring file
 #' 
 #' Checks to make sure that the contents of the .tsv file and its formats are appropriate for
-#' running batch scoring functions.
+#' running batch scoring functions. The batch table can be either a path to a .tsv file or a 
+#' dataframe with the columns mentioned below. 
 #' 
-#' @param batch_file Path to .tsv file mapping screens to their controls for scoring, with two 
-#'   columns for "Screen" and "Control." Screens to score against derived null-models with the
-#'   combn scoring mode must have their respective control labeled as "combn." 
-#' @return TRUE.
-#' @keywords internal
-check_batch_file <- function(batch_file, screens) {
+#' @param batch_table Either a dataframe or a path to .tsv file mapping screens to their controls 
+#'   for scoring, with two columns for "Screen" and "Control." Screens to score against derived 
+#'   null-models with the combn scoring mode must have their respective control labeled as "combn." 
+#' @param screens A screens object created with \code{add_screens_from_table}.
+#' @return A dataframe with Screen and Control columns. 
+#' @export
+load_batch_table <- function(batch_table, screens) {
   
   # Checks if file exists and is a .tsv file
-  ext <- tools::file_ext(batch_file)
-  if (ext != "tsv") {
-    stop(paste("file", batch_file, "not a .tsv file"))
-  }
-  if (!file.exists(batch_file)) {
-    stop(paste("file", batch_file, "does not exist at the specified path"))
+  df <- NULL
+  if (typeof(batch_table) == "character") {
+    if (file.exists(batch_table)) {
+      ext <- tools::file_ext(batch_table)
+      if (ext == "tsv") {
+        df <- utils::read.csv(batch_table, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+      } else {
+        stop(paste("file", batch_table, "not a .tsv file"))
+      }
+    } else {
+      stop(paste("batch_table is not a path to an existing file"))
+    }
+  } else if (is.data.frame(batch_table)) {
+    df <- batch_table
+  } else {
+    stop(paste("batch_table is not a file path (as a character) or a dataframe"))
   }
   
-  # Loads file and checks its format
-  df <- utils::read.csv(batch_file, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+  # Checks file format
   if (colnames(df)[1] != "Screen" | colnames(df)[2] != "Control" | length(colnames(df)) > 2) {
-    stop(paste("file", batch_file, "does not contain exactly two columns labeled Screen and Control"))
+    stop(paste("file", batch_table, "does not contain exactly two columns labeled Screen and Control"))
   }
   
   # Checks that all screens are represented in the screens object
@@ -200,5 +230,6 @@ check_batch_file <- function(batch_file, screens) {
     }
   }
   
-  return(TRUE)
+  # Returns batch table
+  return(df)
 }

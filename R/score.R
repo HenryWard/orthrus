@@ -16,8 +16,7 @@ scale_values <- function(x) {
 #' instead. After running this function, pass the resulting dataframe to 
 #' \code{call_condition_hits} to call significant effects.
 #' 
-#' @param guides A list of guides returned from \code{retrieve_guides_by_label} or 
-#'   from an entry of \code{split_guides_by_type}.
+#' @param guides A list of guides returned from \code{split_guides}.
 #' @param screens List of screens generated with \code{add_screens}.
 #' @param control_screen_name Name of a control screen to test condition screens against.
 #' @param condition_screen_names A list of condition screen names to score against the 
@@ -276,10 +275,8 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
 #' \code{score_conditions_vs_control} instead. After running this function, pass the 
 #' resulting dataframe to \code{call_combn_hits} to call significant effects.
 #' 
-#' @param combn_guides A list of exonic-exonic guides returned from \code{retrieve_guides_by_label} 
-#'   or from the exonic-exonic entry of \code{split_guides_by_type}.
-#' @param single_guides A list of exonic-intergenic guides returned from \code{retrieve_guides_by_label} 
-#'   or from the exonic-intergenic entry of \code{split_guides_by_type}.
+#' @param combn_guides A list of exonic-exonic guides returned from \code{split_guides}.
+#' @param single_guides A list of exonic-intergenic guides returned from \code{split_guides}.
 #' @param screens List of screens generated with \code{add_screens}.
 #' @param screen_names A list of screen names to score against a derived null model from
 #'   single-gene effects.
@@ -894,12 +891,11 @@ loess_MA <- function(x, y, sp = 0.4, dg = 2, binSize = 100) {
 #' all screens listed in "Screen" against their corresponding screens listed in
 #' "Control." Outputs all files and plots in the specified folder. 
 #' 
-#' @param guides A list of guides returned from \code{retrieve_guides_by_label} or 
-#'   from an entry of \code{split_guides_by_type}.
+#' @param guides A list of guides returned from \code{split_guides}.
 #' @param screens List of screens generated with \code{add_screens}.
-#' @param batch_file Path to .tsv file mapping screens to their controls for scoring, with two 
-#'   columns for "Screen" and "Control." Screens to score against dervied null-models with the
-#'   combn scoring mode must have their respective control labeled as "combn." 
+#' @param batch_table Either a dataframe or a path to .tsv file mapping screens to their controls 
+#'   for scoring, with two columns for "Screen" and "Control." Screens to score against derived 
+#'   null-models with the combn scoring mode must have their respective control labeled as "combn." 
 #' @param output_folder Folder to output scored data and plots to. 
 #' @param separate_orientation If true, then guide values are scored separately across each 
 #'   orientation (default FALSE).
@@ -922,7 +918,7 @@ loess_MA <- function(x, y, sp = 0.4, dg = 2, binSize = 100) {
 #'   (default "Positive").
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export
-score_conditions_batch <- function(guides, screens, batch_file, output_folder, 
+score_conditions_batch <- function(guides, screens, batch_table, output_folder, 
                                    separate_orientation = FALSE, min_guides = 3, test = "moderated-t", 
                                    loess = TRUE, filter_genes = NULL, fdr_method = "BY",
                                    fdr_threshold = 0.1, differential_threshold = 0.5, 
@@ -930,8 +926,7 @@ score_conditions_batch <- function(guides, screens, batch_file, output_folder,
                                    plot_type = "png") {
   
   # Checks batch file and loads it
-  check_batch_file(batch_file, screens)
-  batch <- utils::read.csv(batch_file, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+  batch <- load_batch_table(batch_table, screens)
   
   # Makes output folders if nonexistent
   lfc_folder <- file.path(output_folder, "lfc")
@@ -946,6 +941,7 @@ score_conditions_batch <- function(guides, screens, batch_file, output_folder,
     condition <- batch[i,1]
     control <- batch[i,2]
     if (control != "combn") {
+      screen_lfc_folder <- file.path(lfc_folder, paste0(condition, "_", control))
       temp <- score_conditions_vs_control(guides, screens, control, condition, test = test, 
                                           min_guides = min_guides, loess = loess, 
                                           filter_genes = NULL, fdr_method = fdr_method)
@@ -955,7 +951,7 @@ score_conditions_batch <- function(guides, screens, batch_file, output_folder,
                                     neg_type = neg_type, pos_type = pos_type,
                                     fdr_threshold = fdr_threshold, 
                                     differential_threshold = differential_threshold)
-      plot_condition_residuals(scores, residuals, control, condition, lfc_folder, 
+      plot_condition_residuals(scores, residuals, control, condition, screen_lfc_folder, 
                                neg_type = neg_type, pos_type = pos_type,
                                plot_type = plot_type)
       plot_condition_response(scores, control, condition, plot_folder,
@@ -980,14 +976,12 @@ score_conditions_batch <- function(guides, screens, batch_file, output_folder,
 #' all screens listed in "Screen" against their corresponding screens listed in
 #' "Control." Outputs all files and plots in the specified folder. 
 #' 
-#' @param combn_guides A list of exonic-exonic guides returned from \code{retrieve_guides_by_label} 
-#'   or from the exonic-exonic entry of \code{split_guides_by_type}.
-#' @param single_guides A list of exonic-intergenic guides returned from \code{retrieve_guides_by_label} 
-#'   or from the exonic-intergenic entry of \code{split_guides_by_type}.
+#' @param combn_guides A list of exonic-exonic guides returned from \code{split_guides}.
+#' @param single_guides A list of exonic-intergenic guides returned from \code{split_guides}.
 #' @param screens List of screens generated with \code{add_screens}.
-#' @param batch_file Path to .tsv file mapping screens to their controls for scoring, with two 
-#'   columns for "Screen" and "Control." Screens to score against dervied null-models with the
-#'   combn scoring mode must have their respective control labeled as "combn." 
+#' @param batch_table Either a dataframe or a path to .tsv file mapping screens to their controls 
+#'   for scoring, with two columns for "Screen" and "Control." Screens to score against derived 
+#'   null-models with the combn scoring mode must have their respective control labeled as "combn." 
 #' @param output_folder Folder to output scored data and plots to. 
 #' @param separate_orientation If true, then guide values are scored separately across each 
 #'   orientation (default FALSE).
@@ -1012,15 +1006,14 @@ score_conditions_batch <- function(guides, screens, batch_file, output_folder,
 #'   (default "Positive").
 #' @param plot_type Type of plot to output, one of "png" or "pdf" (default "png").
 #' @export
-score_combn_batch <- function(combn_guides, single_guides, screens, batch_file, output_folder, 
+score_combn_batch <- function(combn_guides, single_guides, screens, batch_table, output_folder, 
                               separate_orientation = FALSE, min_guides = 3, test = "moderated-t", 
                               loess = TRUE, filter_genes = NULL, ignore_orientation = FALSE, 
                               fdr_method = "BY", fdr_threshold = 0.1, differential_threshold = 0.5, 
                               neg_type = "Negative", pos_type = "Positive", plot_type = "png") {
   
   # Checks batch file and loads it
-  check_batch_file(batch_file, screens)
-  batch <- utils::read.csv(batch_file, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+  batch <- load_batch_table(batch_table, screens)
   
   # Makes output folders if nonexistent
   lfc_folder <- file.path(output_folder, "lfc")
@@ -1035,6 +1028,7 @@ score_combn_batch <- function(combn_guides, single_guides, screens, batch_file, 
     condition <- batch[i,1]
     control <- batch[i,2]
     if (control == "combn") {
+      screen_lfc_folder <- file.path(lfc_folder, paste0(condition, "_combn"))
       temp <- score_combn_vs_single(combn_guides, single_guides, screens, condition, test = test, 
                                     min_guides = min_guides, loess = loess, filter_genes = NULL,
                                     ignore_orientation = ignore_orientation, fdr_method = fdr_method)
@@ -1044,7 +1038,7 @@ score_combn_batch <- function(combn_guides, single_guides, screens, batch_file, 
                                 neg_type = neg_type, pos_type = pos_type,
                                 fdr_threshold = fdr_threshold, 
                                 differential_threshold = differential_threshold)
-      plot_combn_residuals(scores, residuals, condition, lfc_folder, 
+      plot_combn_residuals(scores, residuals, condition, screen_lfc_folder, 
                            neg_type = neg_type, pos_type = pos_type,
                            plot_type = plot_type)
       plot_combn_response(scores, condition, plot_folder,
