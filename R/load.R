@@ -301,17 +301,16 @@ retrieve_guides_by_label <- function(df, gene_pairs, screens,
 #' one of dual-gene exonic-exonic, single-gene exonic-exonic or exonic-intergenic.
 #' 
 #' @param guides Dataframe returned from \code{retrieve_guides_by_gene}.
-#' @return A list of three separate guide lists. Dual-gene exonic-exonic guides are
-#'   stored in the key "exonic_exonic", exonic-intergenic guides are stored in the 
-#'   key "exonic_intergenic" and single-gene exonic-exonic guides are stored in the
-#'   key "single_gene_dual_targeted". 
+#' @return A list of three separate guide lists. Combinatorial-targeting guides are
+#'   stored in the key "combn", single-targeting guides are stored in the 
+#'   key "single" and dual-targeting guides are stored in the key "dual". 
 split_guides_by_type <- function(guides) {
-  dual_targeted <- guides[unlist(lapply(guides, function(x) x[["guide_type"]] == "single_gene_dual_targeted"))]
-  single_targeted <- guides[unlist(lapply(guides, function(x) x[["guide_type"]] == "exonic_intergenic"))]
-  pairwise_targeted <- guides[unlist(lapply(guides, function(x) x[["guide_type"]] == "exonic_exonic"))]
-  return(list("single_gene_dual_targeted" = dual_targeted, 
-              "exonic_intergenic" = single_targeted, 
-              "exonic_exonic" = pairwise_targeted))
+  dual <- guides[unlist(lapply(guides, function(x) x[["guide_type"]] == "dual"))]
+  single <- guides[unlist(lapply(guides, function(x) x[["guide_type"]] == "single"))]
+  combn <- guides[unlist(lapply(guides, function(x) x[["guide_type"]] == "combn"))]
+  return(list("dual" = dual, 
+              "single" = single, 
+              "combn" = combn))
 }
 
 #' Normalizes reads for given screens
