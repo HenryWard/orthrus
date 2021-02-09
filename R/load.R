@@ -11,10 +11,10 @@
 #'   guides in the gene1 column (optional, default NULL).  
 #' @param id_col2 A column containing guide-specific indices, e.g. guide sequences or IDs, for
 #'   guides in the gene1 column (optional, default NULL).  
-#' @return A list of three separate guide lists. Dual-gene exonic-exonic guides are
-#'   stored in the key "exonic_exonic", exonic-intergenic guides are stored in the 
-#'   key "exonic_intergenic" and single-gene exonic-exonic guides are stored in the
-#'   key "single_gene_dual_targeted". 
+#' @return A list of several separate guide lists. Combinatorial-targeting guides are stored
+#'   in the key "combn", dual-targeting guides are stored in the key "dual", 
+#'   single-targeting guides are stored in the key "single" and guides which target
+#'   two control genes are stored in the key "control".
 #' @export
 split_guides <- function(guides, screens, id_col1 = NULL, id_col2 = NULL) {
   gene_pairs <- unique_gene_pairs(guides)
@@ -94,9 +94,9 @@ retrieve_guides_by_gene <- function(df, gene_pairs, screens,
     # guides that target a single gene twice
     if ((gene1 == "NegControl" & gene2 == "NegControl") | gene2 == "None") {
       if (gene1 == "NegControl" & gene2 == "NegControl") {
-        guide_list[["guide_type"]] <- "intergenic_intergenic"
+        guide_list[["guide_type"]] <- "control"
       } else if (gene2 == "None") {
-        guide_list[["guide_type"]] <- "single_gene_dual_targeted"
+        guide_list[["guide_type"]] <- "dual"
       }
       for (col in guide_cols) {
         guide_name <- col
@@ -112,7 +112,7 @@ retrieve_guides_by_gene <- function(df, gene_pairs, screens,
     
     # Handles exonic-intergenic guides
     else if (gene1 == "NegControl" | gene2 == "NegControl") {
-      guide_list[["guide_type"]] <- "exonic_intergenic"
+      guide_list[["guide_type"]] <- "single"
       orient1_index <- all_index & df$gene2 == "NegControl"
       orient2_index <- all_index & df$gene1 == "NegControl"
       for (col in guide_cols) {
@@ -133,7 +133,7 @@ retrieve_guides_by_gene <- function(df, gene_pairs, screens,
     
     # Handles exonic-exonic guides targeting two genes
     else if (gene1 != gene2) {
-      guide_list[["guide_type"]] <- "exonic_exonic"
+      guide_list[["guide_type"]] <- "combn"
       index1 <- all_index & df$gene1 == gene1 & df$gene2 == gene2
       index2 <- all_index & df$gene1 == gene2 & df$gene2 == gene1
       for (col in guide_cols) {

@@ -2,11 +2,6 @@
 # SCORING CODE
 ######
 
-# Inner function to scale values between 0 and 1
-scale_values <- function(x) {
-  val <- (x-min(x, na.rm=T)) / (max(x, na.rm=T) - min(x, na.rm=T))
-}
-
 #' Scores conditions against a single control.
 #' 
 #' Scores guides for any number of condition screens against a control screen
@@ -941,7 +936,7 @@ score_conditions_batch <- function(guides, screens, batch_table, output_folder,
     condition <- batch[i,1]
     control <- batch[i,2]
     if (control != "combn") {
-      screen_lfc_folder <- file.path(lfc_folder, paste0(condition, "_", control))
+      screen_lfc_folder <- file.path(lfc_folder, paste0(condition, "_vs_", control))
       temp <- score_conditions_vs_control(guides, screens, control, condition, test = test, 
                                           min_guides = min_guides, loess = loess, 
                                           filter_genes = NULL, fdr_method = fdr_method)
