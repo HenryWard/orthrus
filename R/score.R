@@ -1138,9 +1138,9 @@ orthrus_wrapper <- function(reads_file, sample_file, batch_file, output_folder,
   plot_lfc_qc(df, screens, qc_folder, display_numbers = display_numbers, plot_type = plot_type, 
               negative_controls = negative_controls)
   guides <- split_guides(df, screens, id_col1, id_col2)
-  dual <- guides[["single_gene_dual_targeted"]]
-  single <- guides[["exonic_intergenic"]]
-  paralogs <- guides[["exonic_exonic"]]
+  dual <- guides[["dual"]]
+  single <- guides[["single"]]
+  paralogs <- guides[["combn"]]
   
   # Scores dual-targeting guides
   score_conditions_batch(dual, screens, batch_file, output_folder, 

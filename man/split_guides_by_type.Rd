@@ -10,10 +10,9 @@ split_guides_by_type(guides)
 \item{guides}{Dataframe returned from \code{retrieve_guides_by_gene}.}
 }
 \value{
-A list of three separate guide lists. Dual-gene exonic-exonic guides are
-  stored in the key "exonic_exonic", exonic-intergenic guides are stored in the 
-  key "exonic_intergenic" and single-gene exonic-exonic guides are stored in the
-  key "single_gene_dual_targeted".
+A list of three separate guide lists. Combinatorial-targeting guides are
+  stored in the key "combn", single-targeting guides are stored in the 
+  key "single" and dual-targeting guides are stored in the key "dual".
 }
 \description{
 Splits guide returned from \code{retrieve_guides_by_gene} by targeting type, which is 

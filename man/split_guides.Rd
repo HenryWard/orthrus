@@ -18,10 +18,10 @@ guides in the gene1 column (optional, default NULL).}
 guides in the gene1 column (optional, default NULL).}
 }
 \value{
-A list of three separate guide lists. Dual-gene exonic-exonic guides are
-  stored in the key "exonic_exonic", exonic-intergenic guides are stored in the 
-  key "exonic_intergenic" and single-gene exonic-exonic guides are stored in the
-  key "single_gene_dual_targeted".
+A list of several separate guide lists. Combinatorial-targeting guides are stored
+  in the key "combn", dual-targeting guides are stored in the key "dual", 
+  single-targeting guides are stored in the key "single" and guides which target
+  two control genes are stored in the key "control".
 }
 \description{
 Splits data into different types of guides

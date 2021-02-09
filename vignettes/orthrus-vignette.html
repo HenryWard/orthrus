@@ -421,9 +421,9 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">plot_lfc_qc</span>(df, screens, qc_folder, <span class="dt">display_numbers =</span> <span class="ot">FALSE</span>, <span class="dt">plot_type =</span> <span class="st">&quot;pdf&quot;</span>, <span class="dt">negative_controls =</span> <span class="kw">c</span>(<span class="st">&quot;NT&quot;</span>))</span></code></pre></div>
 <p>The last thing we need to do before scoring data is parse it into a different structure and split guides by their type, since we score dual-targeting guides separately from combinatorial-targeting guides.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>guides &lt;-<span class="st"> </span><span class="kw">split_guides</span>(df, screens, <span class="st">&quot;Cas9.Guide&quot;</span>, <span class="st">&quot;Cpf1.Guide&quot;</span>)</span>
-<span id="cb8-2"><a href="#cb8-2"></a>dual &lt;-<span class="st"> </span>guides[[<span class="st">&quot;single_gene_dual_targeted&quot;</span>]]</span>
-<span id="cb8-3"><a href="#cb8-3"></a>single &lt;-<span class="st"> </span>guides[[<span class="st">&quot;exonic_intergenic&quot;</span>]]</span>
-<span id="cb8-4"><a href="#cb8-4"></a>paralogs &lt;-<span class="st"> </span>guides[[<span class="st">&quot;exonic_exonic&quot;</span>]]</span></code></pre></div>
+<span id="cb8-2"><a href="#cb8-2"></a>dual &lt;-<span class="st"> </span>guides[[<span class="st">&quot;dual&quot;</span>]]</span>
+<span id="cb8-3"><a href="#cb8-3"></a>single &lt;-<span class="st"> </span>guides[[<span class="st">&quot;single&quot;</span>]]</span>
+<span id="cb8-4"><a href="#cb8-4"></a>paralogs &lt;-<span class="st"> </span>guides[[<span class="st">&quot;combn&quot;</span>]]</span></code></pre></div>
 </div>
 <div id="batch-scoring" class="section level3">
 <h3>Batch scoring</h3>

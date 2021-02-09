@@ -142,9 +142,9 @@ The last thing we need to do before scoring data is parse it into a different st
 
 ```{r}
 guides <- split_guides(df, screens, "Cas9.Guide", "Cpf1.Guide")
-dual <- guides[["single_gene_dual_targeted"]]
-single <- guides[["exonic_intergenic"]]
-paralogs <- guides[["exonic_exonic"]]
+dual <- guides[["dual"]]
+single <- guides[["single"]]
+paralogs <- guides[["combn"]]
 ```
 
 ### Batch scoring
