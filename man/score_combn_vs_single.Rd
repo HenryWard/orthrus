@@ -15,6 +15,7 @@ score_combn_vs_single(
   fdr_method = "BY",
   filter_genes = NULL,
   ignore_orientation = FALSE,
+  collapse_single_targeting = TRUE,
   return_residuals = TRUE,
   verbose = FALSE
 )
@@ -44,6 +45,9 @@ Only works when test = "moderated-t" (default TRUE).}
 
 \item{ignore_orientation}{If TRUE, aggregates guides across both orientations, returning only
 one p-value and FDR column with orientation2 p-values set to NA (default FALSE).}
+
+\item{collapse_single_targeting}{If TRUE, takes the mean of single-targeting controls when
+there are multiple controls that match a given gene pair (default TRUE).}
 
 \item{return_residuals}{If FALSE, doesn't return residuals dataframe (default TRUE).
 This is recommend if scoring large datasets and memory is a limitation.}

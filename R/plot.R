@@ -488,7 +488,7 @@ plot_condition_response <- function(scores, control_name, condition_name, output
     ggplot2::xlab(paste0(control_name, " mean LFC")) +
     ggplot2::ylab(paste0(condition_name, " mean LFC")) +
     ggplot2::labs(fill = "Significant response") +
-    ggplot2::guides(color = FALSE, size = FALSE) +
+    ggplot2::guides(color = "none", size = "none") +
     ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
@@ -522,7 +522,7 @@ plot_condition_response <- function(scores, control_name, condition_name, output
     ggplot2::xlab(paste0("Differential effect")) +
     ggplot2::ylab(ylab) +
     ggplot2::labs(fill = "Significant response") +
-    ggplot2::guides(color = FALSE, size = FALSE) +
+    ggplot2::guides(color = "none", size = "none") +
     ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
@@ -611,7 +611,7 @@ plot_combn_response <- function(scores, condition_name, output_folder,
     ggplot2::xlab(paste0(condition_name, " mean expected single LFC")) +
     ggplot2::ylab(paste0(condition_name, " mean observed combinatorial LFC")) +
     ggplot2::labs(fill = "Significant response") +
-    ggplot2::guides(color = FALSE, size = FALSE) +
+    ggplot2::guides(color = "none", size = "none") +
     ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
@@ -647,7 +647,7 @@ plot_combn_response <- function(scores, condition_name, output_folder,
     ggplot2::xlab(paste0("Differential effect")) +
     ggplot2::ylab(ylab) +
     ggplot2::labs(fill = "Significant response") +
-    ggplot2::guides(color = FALSE, size = FALSE) +
+    ggplot2::guides(color = "none", size = "none") +
     ggthemes::theme_tufte(base_size = 20, base_family = "sans") +
     ggplot2::theme(axis.text.x = ggplot2:: element_text(color = "Black", size = 16),
                    axis.text.y = ggplot2:: element_text(color = "Black", size = 16),
@@ -839,11 +839,15 @@ plot_combn_residuals <- function(scores, residuals, condition_name, output_folde
   residuals1 <- residuals[[1]]
   residuals2 <- residuals[[2]]
   residuals1 <- residuals1[residuals1$n %in% as.numeric(rownames(scores)),]
-  residuals2 <- residuals2[residuals2$n %in% as.numeric(rownames(scores)),]
   residuals1$lfc <- residuals1[[combn_col]] - residuals1[[single_col]]
-  residuals2$lfc <- residuals2[[combn_col]] - residuals2[[single_col]]
   residuals1$orientation <- "Orientation 1"
-  residuals2$orientation <- "Orientation 2"
+  
+  ignored_orientation <- all(residuals2 == 0)
+  if (!ignored_orientation) {
+    residuals2 <- residuals2[residuals2$n %in% as.numeric(rownames(scores)),]
+    residuals2$lfc <- residuals2[[combn_col]] - residuals2[[single_col]]
+    residuals2$orientation <- "Orientation 2" 
+  }
   
   # Gets ranking of top hits
   neg_order <- order(scores[[diff_col]])
@@ -856,11 +860,18 @@ plot_combn_residuals <- function(scores, residuals, condition_name, output_folde
   for (i in unique(residuals1$n)) {
     
     # Gets data
-    df1 <- residuals1[residuals1$n == i,]
-    df2 <- residuals2[residuals2$n == i,]
-    df1$orientation <- paste0(df1$orientation[1], " (n = ", nrow(df1), ")")
-    df2$orientation <- paste0(df2$orientation[1], " (n = ", nrow(df2), ")")
-    df <- rbind(df1, df2)
+    df <- NULL
+    if (!ignored_orientation) {
+      df1 <- residuals1[residuals1$n == i,]
+      df2 <- residuals2[residuals2$n == i,]
+      df1$orientation <- paste0(df1$orientation[1], " (n = ", nrow(df1), ")")
+      df2$orientation <- paste0(df2$orientation[1], " (n = ", nrow(df2), ")")
+      df <- rbind(df1, df2)
+    } else {
+      df1 <- residuals1[residuals1$n == i,]
+      df1$orientation <- paste0(df1$orientation[1], " (n = ", nrow(df1), ")")
+      df <- df1
+    }
     
     # Gets gene names and sets axis labels
     ind <- which(as.numeric(rownames(scores)) == i)

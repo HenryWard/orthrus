@@ -1,6 +1,6 @@
 Package: orthrus
 Title: Scoring Combinatorial CRISPR Screens
-Version: 0.4.3.3
+Version: 0.4.4.0
 Authors@R: person("Henry", "Ward", email = "henry.neil.ward@gmail.com", role = c("aut", "cre"))
 Description: Package for processing, scoring and analyzing combinatorial CRISPR screens.
 Depends: R (>= 3.6)
@@ -14,7 +14,7 @@ Imports:
 	pheatmap,
 	PRROC,
 	RColorBrewer
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.2
 Suggests: 
     knitr,
     rmarkdown,
