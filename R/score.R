@@ -365,7 +365,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
         guide_num <- max(unlist(lapply(guide_names, function(x) length(guide[[x]]))))
         max_guides <- max(max_guides, guide_num)
       }
-    } 
+    }
     
     # Makes residual dataframes with columns equal to the max number of guides.
     # Doubles the size if orientation is ignored
@@ -386,16 +386,30 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
     }
   }
   
-  # Makes loess residual dataframes if specified, one for each orientation
+  # Makes loess residual dataframes if specified, one for each orientation. 
+  # If orientation is ignored, we don't pre-initialize the DataFrames at 
+  # the cost of some speed to account for variable length combinations
+  # of guides and controls
   loess_residuals <- list()
   if (return_residuals & test == "moderated-t") {
-    loess_residuals[[1]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
-    loess_residuals[[2]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
-    for (name in condition_names) {
-      loess_residuals[[1]][[paste0("mean_single_", name)]] <- rep(0, nrow(loess_residuals[[1]]))
-      loess_residuals[[1]][[paste0("mean_combn_", name)]] <- rep(0, nrow(loess_residuals[[1]]))
-      loess_residuals[[2]][[paste0("mean_single_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
-      loess_residuals[[2]][[paste0("mean_combn_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
+    if (!ignore_orientation) {
+      loess_residuals[[1]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
+      loess_residuals[[2]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
+      for (name in condition_names) {
+        loess_residuals[[1]][[paste0("mean_single_", name)]] <- rep(0, nrow(loess_residuals[[1]]))
+        loess_residuals[[1]][[paste0("mean_combn_", name)]] <- rep(0, nrow(loess_residuals[[1]]))
+        loess_residuals[[2]][[paste0("mean_single_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
+        loess_residuals[[2]][[paste0("mean_combn_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
+      }
+    } else {
+      loess_residuals[[1]] <- data.frame(n = integer())
+      loess_residuals[[2]] <- data.frame(n = integer())
+      for (name in condition_names) {
+        loess_residuals[[1]][[paste0("mean_single_", name)]] <- numeric()
+        loess_residuals[[1]][[paste0("mean_combn_", name)]] <- numeric()
+        loess_residuals[[2]][[paste0("mean_single_", name)]] <- numeric()
+        loess_residuals[[2]][[paste0("mean_combn_", name)]] <- numeric()
+      }
     }
   }
   
@@ -578,7 +592,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
         } else {
           all_length <- length(all_combn) * length(all_null)
           ind1 <- ignore_resid_counter:(ignore_resid_counter + all_length - 1)
-          loess_residuals[[1]][["n"]][ind1] <- i
+          loess_residuals[[1]][ind1, "n"] <- i
           loess_residuals[[1]][[paste0("mean_single_", name)]][ind1] <- all_null
           loess_residuals[[1]][[paste0("mean_combn_", name)]][ind1] <- all_combn
         }
@@ -614,9 +628,19 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
           condition_residuals[[name]][[1]][i,1:max_guides] <- residuals1 
           condition_residuals[[name]][[2]][i,1:max_guides] <- residuals2 
         } else {
-          residuals <- all_combn - all_null
-          if(length(residuals) < max_guides) { 
-            residuals <- c(residuals, rep(NA, max_guides - length(residuals))) 
+          residuals <- expand.grid(all_combn, all_null)
+          residuals <- residuals[,1] - residuals[,2]
+          n_resid <- length(residuals)
+          n_resid_col <- ncol(condition_residuals[[name]][[1]])
+          n_total <- max(n_resid, n_resid_col)
+          if (n_resid < n_total) { 
+            residuals <- c(residuals, rep(NA, n_total - n_resid)) 
+          }
+          if (n_resid_col < n_total) {
+            for (resid_col in (n_resid_col+1):n_total) {
+              condition_residuals[[name]][[1]][,resid_col] <- NA
+            }
+            colnames(condition_residuals[[name]][[1]]) <- paste0("guide_residual_", 1:n_total)
           }
           condition_residuals[[name]][[1]][i,1:length(residuals)] <- residuals 
         }
@@ -710,10 +734,19 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
         ind <- joined_residuals$n == i
         resid <- joined_residuals[[paste0("loess_residual_", name)]][ind]
         predicted <- joined_residuals[[paste0("loess_predicted_", name)]][ind]
-        if (length(resid) < max_guides*2) { 
-          resid <- c(resid, rep(NA, max_guides*2 - length(resid))) 
-        } 
-        condition_residuals[[name]][[1]][i,1:(max_guides*2)] <- resid
+        n_resid <- length(resid)
+        n_resid_col <- ncol(condition_residuals[[name]][[1]])
+        n_total <- max(n_resid, n_resid_col)
+        if (length(resid) < n_total) { 
+          resid <- c(resid, rep(NA, n_total - length(resid))) 
+        }
+        if (n_resid_col < n_total) {
+          for (resid_col in (n_resid_col+1):n_total) {
+            condition_residuals[[name]][[1]][,resid_col] <- NA
+          }
+          colnames(condition_residuals[[name]][[1]]) <- paste0("guide_residual_", 1:n_total)
+        }
+        condition_residuals[[name]][[1]][i,1:n_total] <- resid
         mean_resid <- mean(resid, na.rm = TRUE)
         if (!is.nan(mean_resid)) { 
           scores[[paste0("differential_combn_vs_single_", name)]][i] <- mean_resid
