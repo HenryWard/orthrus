@@ -34,10 +34,18 @@
 #'   names. The second entry, named "residuals" in the list, is a dataframe containing control,
 #'   condition and loess-normalized residuals for all guides.
 #' @export
-score_conditions_vs_control <- function(guides, screens, control_screen_name, condition_screen_names, 
-                                        separate_orientation = FALSE, min_guides = 3, test = "moderated-t", 
-                                        loess = TRUE, fdr_method = "BY", filter_genes = NULL,
-                                        return_residuals = TRUE, verbose = FALSE) {
+score_conditions_vs_control <- function(guides, 
+                                        screens, 
+                                        control_screen_name, 
+                                        condition_screen_names, 
+                                        separate_orientation = FALSE, 
+                                        min_guides = 3, 
+                                        test = "moderated-t", 
+                                        loess = TRUE, 
+                                        fdr_method = "BY", 
+                                        filter_genes = NULL,
+                                        return_residuals = TRUE, 
+                                        verbose = FALSE) {
   
   # Filters specified genes from dataset before scoring
   if (!is.null(filter_genes)) {
@@ -54,28 +62,52 @@ score_conditions_vs_control <- function(guides, screens, control_screen_name, co
   results1 <- NULL
   results2 <- NULL
   if (!separate_orientation) {
-    results <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
-                                                 min_guides = min_guides, test = test, loess = loess,
-                                                 return_residuals = return_residuals, verbose = verbose)
+    results <- score_conditions_vs_control_inner(guides, 
+                                                 screens, 
+                                                 control_screen_name, 
+                                                 condition_screen_names, 
+                                                 min_guides = min_guides, 
+                                                 test = test, 
+                                                 loess = loess,
+                                                 return_residuals = return_residuals, 
+                                                 verbose = verbose)
     return(results)
   } else {
-    results1 <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
-                                                  min_guides = min_guides, test = test, loess = loess,
-                                                  return_residuals = return_residuals, verbose = verbose,
+    results1 <- score_conditions_vs_control_inner(guides, 
+                                                  screens, 
+                                                  control_screen_name, 
+                                                  condition_screen_names, 
+                                                  min_guides = min_guides, 
+                                                  test = test, loess = loess,
+                                                  return_residuals = return_residuals, 
+                                                  verbose = verbose,
                                                   screen_prefix = "orient1_")
-    results2 <- score_conditions_vs_control_inner(guides, screens, control_screen_name, condition_screen_names, 
-                                                  min_guides = min_guides, test = test, loess = loess,
-                                                  return_residuals = return_residuals, verbose = verbose,
+    results2 <- score_conditions_vs_control_inner(guides, 
+                                                  screens, 
+                                                  control_screen_name, 
+                                                  condition_screen_names, 
+                                                  min_guides = min_guides, 
+                                                  test = test, 
+                                                  loess = loess,
+                                                  return_residuals = return_residuals, 
+                                                  verbose = verbose,
                                                   screen_prefix = "orient2_")
     return(list(results1, results2))
   }
 }
 
 # Inner function for the above
-score_conditions_vs_control_inner <- function(guides, screens, control_screen_name, condition_screen_names, 
-                                              min_guides = 3, test = "moderated-t", 
-                                              loess = TRUE, screen_prefix = "", fdr_method = "BY",
-                                              return_residuals = TRUE, verbose = FALSE) {
+score_conditions_vs_control_inner <- function(guides, 
+                                              screens, 
+                                              control_screen_name, 
+                                              condition_screen_names, 
+                                              min_guides = 3, 
+                                              test = "moderated-t", 
+                                              loess = TRUE, 
+                                              screen_prefix = "", 
+                                              fdr_method = "BY",
+                                              return_residuals = TRUE, 
+                                              verbose = FALSE) {
   
   # Gets condition names and columns for any number of conditions
   control_name <- control_screen_name
@@ -107,6 +139,7 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
       residual_df <- data.frame(matrix(nrow = length(guides), ncol = max_guides))
       colnames(residual_df) <- paste0("guide_residual_", 1:max_guides)
       condition_residuals[[name]] <- residual_df
+      
     }
   }
   
@@ -295,11 +328,19 @@ score_conditions_vs_control_inner <- function(guides, screens, control_screen_na
 #'   names. The second entry, named "residuals" in the list, is a dataframe containing control,
 #'   condition and loess-normalized residuals for all guides.
 #' @export
-score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_names, 
-                                  min_guides = 3, test = "moderated-t",
-                                  loess = TRUE, fdr_method = "BY", filter_genes = NULL,
-                                  ignore_orientation = FALSE, collapse_single_targeting = TRUE,
-                                  return_residuals = TRUE, verbose = FALSE) {
+score_combn_vs_single <- function(combn_guides, 
+                                  single_guides, 
+                                  screens, 
+                                  screen_names, 
+                                  min_guides = 3, 
+                                  test = "moderated-t",
+                                  loess = TRUE, 
+                                  fdr_method = "BY", 
+                                  filter_genes = NULL,
+                                  ignore_orientation = FALSE, 
+                                  collapse_single_targeting = TRUE,
+                                  return_residuals = TRUE, 
+                                  verbose = FALSE) {
   
   # Filters specified genes from dataset before scoring
   if (!is.null(filter_genes)) {
@@ -391,7 +432,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
   # the cost of some speed to account for variable length combinations
   # of guides and controls
   loess_residuals <- list()
-  if (return_residuals & test == "moderated-t") {
+  if (test == "moderated-t") {
     if (!ignore_orientation) {
       loess_residuals[[1]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
       loess_residuals[[2]] <- data.frame(n = rep(0, max_guides*length(combn_guides)))
@@ -402,13 +443,16 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
         loess_residuals[[2]][[paste0("mean_combn_", name)]] <- rep(0, nrow(loess_residuals[[2]]))
       }
     } else {
-      loess_residuals[[1]] <- data.frame(n = integer())
-      loess_residuals[[2]] <- data.frame(n = integer())
+      
+      # Because we don't know how large the residual DFs will be, we will
+      # occasionally double them in size at runtime when they grow too large
+      loess_residuals[[1]] <- data.frame(n = rep(0, 10000))
+      loess_residuals[[2]] <- data.frame(n = rep(0, 10000))
       for (name in condition_names) {
-        loess_residuals[[1]][[paste0("mean_single_", name)]] <- numeric()
-        loess_residuals[[1]][[paste0("mean_combn_", name)]] <- numeric()
-        loess_residuals[[2]][[paste0("mean_single_", name)]] <- numeric()
-        loess_residuals[[2]][[paste0("mean_combn_", name)]] <- numeric()
+        loess_residuals[[1]][[paste0("mean_single_", name)]] <- rep(0, 10000)
+        loess_residuals[[1]][[paste0("mean_combn_", name)]] <- rep(0, 10000)
+        loess_residuals[[2]][[paste0("mean_single_", name)]] <- rep(0, 10000)
+        loess_residuals[[2]][[paste0("mean_combn_", name)]] <- rep(0, 10000)
       }
     }
   }
@@ -442,7 +486,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
     }
     
     # Subsets single-targeting guides to matching IDs if given
-    if (!("orient1_id1" %in% names(combn_vals) & "orient1_id2" %in% names(combn_vals))) {
+    if ("orient1_id1" %in% names(combn_vals) & "orient1_id2" %in% names(combn_vals)) {
       single_gene1 <- single_gene1[single_gene1[["orient1_id1"]] %in% combn_vals[["orient1_id1"]] |
                                      single_gene1[["orient2_id2"]] %in% combn_vals[["orient2_id2"]]]
       single_gene2 <- single_gene2[single_gene2[["orient1_id1"]] %in% combn_vals[["orient2_id1"]] |
@@ -456,6 +500,7 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
     # Scores combn-targeting guides vs. single-targeting null model
     increment1 <- 0
     increment2 <- 0
+    all_resid_increment <- 0
     for (name in condition_names) {
       
       # Gets column names for each orientation and the current condition
@@ -466,74 +511,16 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       combn1 <- rowMeans(data.frame(combn_vals[orient1]))
       combn2 <- rowMeans(data.frame(combn_vals[orient2]))
       
-      # Gets guide values for single-targeting guides
-      single_gene1_orient1 <- rowMeans(data.frame(single_gene1[orient1]))
-      single_gene1_orient2 <- rowMeans(data.frame(single_gene1[orient2]))
-      single_gene2_orient1 <- rowMeans(data.frame(single_gene2[orient1]))
-      single_gene2_orient2 <- rowMeans(data.frame(single_gene2[orient2]))
-      
-      # Gets null model by summing different orientations of single-targeting guides
-      null1 <- c()
-      null2 <- c()
-      if (!("orient1_id1" %in% names(combn_vals) & "orient1_id2" %in% names(combn_vals))) {
-        null1 <- unlist(apply(expand.grid(single_gene1_orient1, single_gene2_orient2), 1, sum))
-        null2 <- unlist(apply(expand.grid(single_gene1_orient2, single_gene2_orient1), 1, sum))
-      } else {
-        for (j in 1:length(combn1)) {
-          id1 <- combn_vals[["orient1_id1"]][j]
-          id2 <- combn_vals[["orient1_id2"]][j]
-          val1 <- single_gene1_orient1[single_gene1[["orient1_id1"]] == id1]
-          val2 <- single_gene2_orient2[single_gene2[["orient2_id2"]] == id2]
-          if ((collapse_single_targeting == TRUE) & (ignore_orientation == TRUE)) {
-            if (length(val1) > 1) {
-              val1 <- mean(val1) 
-              if (verbose) {
-                cat(paste("Warning: taking mean of single-gene effects for", 
-                          gene1, "/", gene2, "in ", name, "\n"))
-              }
-            }
-            if (length(val2) > 1) { 
-              val2 <- mean(val2) 
-              if (verbose) {
-                cat(paste("Warning: taking mean of single-gene effects for", 
-                          gene1, "/", gene2, "in ", name, "\n"))
-              }
-            }
-          }
-          if (length(val1) > 0 & length(val2) > 0) {
-            null1 <- c(null1, val1 + val2)
-          } else {
-            null1 <- c(null1, NA)
-          }
-        }
-        for (j in 1:length(combn2)) {
-          id1 <- combn_vals[["orient2_id1"]][j]
-          id2 <- combn_vals[["orient2_id2"]][j]
-          val1 <- single_gene1_orient2[single_gene1[["orient2_id2"]] == id2]
-          val2 <- single_gene2_orient1[single_gene2[["orient1_id1"]] == id1]
-          if ((collapse_single_targeting == TRUE) & (ignore_orientation == TRUE)) {
-            if (length(val1) > 1) { 
-              val1 <- mean(val1) 
-              if (verbose) {
-                cat(paste("Warning: taking mean of single-gene effects for", 
-                          gene1, "/", gene2, "in ", name, "\n"))
-              }
-            }
-            if (length(val2) > 1) { 
-              val2 <- mean(val2) 
-              if (verbose) {
-                cat(paste("Warning: taking mean of single-gene effects for", 
-                          gene1, "/", gene2, "in ", name, "\n"))
-              }
-            }
-          }
-          if (length(val1) > 0 & length(val2) > 0) {
-            null2 <- c(null2, val1 + val2)
-          } else {
-            null2 <- c(null2, NA)
-          }
-        }
-      }
+      # Gets null values for each orientation
+      null_vals <- compute_null_model(orient1,
+                                      orient2,
+                                      single_gene1, 
+                                      single_gene2, 
+                                      combn_vals,
+                                      combn1,
+                                      combn2)
+      null1 <- null_vals[[1]]
+      null2 <- null_vals[[2]]
       
       # Different behavior depending on whether orientation matters
       all_combn <- NULL
@@ -579,7 +566,10 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
       }
       
       # Appends values for loess-normalization to residual dataframe if necessary
-      if (return_residuals & test == "moderated-t") {
+      if (test == "moderated-t") {
+        
+        # When we account for orientation, this is straightforward and we know the size
+        # of the output residual DF in advance
         if (!ignore_orientation) {
           ind1 <- counter1:(counter1 + length(combn1) - 1)
           ind2 <- counter2:(counter2 + length(combn2) - 1)
@@ -589,9 +579,18 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
           loess_residuals[[1]][[paste0("mean_combn_", name)]][ind1] <- combn1
           loess_residuals[[2]][[paste0("mean_single_", name)]][ind2] <- null2
           loess_residuals[[2]][[paste0("mean_combn_", name)]][ind2] <- combn2
+          
+        # When we ignore orientation, we don't know the size of the output residual
+        # DF in advance (and there's only one, not two), so we occasionally double 
+        # it in size
         } else {
           all_length <- length(all_combn) * length(all_null)
-          ind1 <- ignore_resid_counter:(ignore_resid_counter + all_length - 1)
+          end_resid_ind <- ignore_resid_counter + all_length - 1
+          ind1 <- ignore_resid_counter:end_resid_ind
+          if (end_resid_ind > nrow(loess_residuals[[1]])) {
+            empty_df <- dplyr::mutate_all(loess_residuals[[1]], function(x) NA)
+            loess_residuals[[1]] <- rbind(loess_residuals[[1]], empty_df)
+          }
           loess_residuals[[1]][ind1, "n"] <- i
           loess_residuals[[1]][[paste0("mean_single_", name)]][ind1] <- all_null
           loess_residuals[[1]][[paste0("mean_combn_", name)]][ind1] <- all_combn
@@ -642,7 +641,8 @@ score_combn_vs_single <- function(combn_guides, single_guides, screens, screen_n
             }
             colnames(condition_residuals[[name]][[1]]) <- paste0("guide_residual_", 1:n_total)
           }
-          condition_residuals[[name]][[1]][i,1:length(residuals)] <- residuals 
+          ### THIS NEXT LINE IS VERY SLOW!!! Must refactor
+          condition_residuals[[name]][[1]][i,1:length(residuals)] <- residuals
         }
       }
       
