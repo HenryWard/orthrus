@@ -11,8 +11,11 @@ Imports:
   ggplot2,
 	ggthemes,
 	limma,
+	tibble,
+	tictoc,
 	pheatmap,
 	PRROC,
+	tidyr,
 	RColorBrewer
 RoxygenNote: 7.2.2
 Suggests: 
