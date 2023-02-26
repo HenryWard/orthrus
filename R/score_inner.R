@@ -134,8 +134,10 @@ subset_to_matching_ids <- function(combn_vals,
 #'   max_resid
 fix_residual_length <- function(resid_grid, max_resid) {
   if (nrow(resid_grid) > max_resid) {
+    if (!exists(".Random.seed")) {
+      set.seed(123456)
+    }
     prev_seed <- .Random.seed
-    set.seed(123456)
     resid_grid <- resid_grid[sample(nrow(resid_grid), max_resid),]
     .Random.seed <- prev_seed
   } else if (nrow(resid_grid) < max_resid) {

@@ -480,7 +480,6 @@ score_combn_vs_single <- function(combn_guides,
     gene2 <- combn_vals$gene2
     scores$gene1[i] <- gene1
     scores$gene2[i] <- gene2
-    # tic(paste("Processing", gene1, gene2, "at index", i))
     
     # Finds matching single-targeting guides if any exist
     single_gene1 <- NULL
@@ -665,7 +664,6 @@ score_combn_vs_single <- function(combn_guides,
     counter1 <- counter1 + increment1
     counter2 <- counter2 + increment2
     ignore_resid_counter <- ignore_resid_counter + all_resid_increment
-    # toc()
   }
   
   # Computes loess-normalized residuals if specified
