@@ -337,13 +337,25 @@ split_guides_by_type <- function(guides) {
 #'   below this value will be filtered out).
 #' @param max_reads Maximum number of reads to keep (default 10000, anything
 #'   above this value will be filtered out).
+#' @param nonessential_norm Whether or not to normalize each screen against its
+#'   population of core non-essential genes, as defined by Traver et al. 2015 
+#'   (default FALSE).
+#' @param nonessential_genes Replaces the Traver et al. 2015 nonessential gene 
+#'   list with this list if specified (default NULL)
 #' @return Normalized dataframe.
 #' @export 
 normalize_screens <- function(df, screens, filter_names = NULL, scaling_factor = 1e6, 
-                              pseudocount = 1, min_reads = 30, max_reads = 10000) {
+                              pseudocount = 1, min_reads = 30, max_reads = 10000,
+                              nonessential_norm = TRUE, nonessential_genes = NULL) {
   
   # Checks for input errors
   check_screen_params(df, screens)
+  
+  # Sets non-essential genes 
+  nonessentials <- traver_nonessentials
+  if (!is.null(nonessential_genes)) {
+    nonessentials <- nonessential_genes
+  }
   
   # Flags guides with too few read counts
   all_names <- names(screens)
@@ -388,6 +400,20 @@ normalize_screens <- function(df, screens, filter_names = NULL, scaling_factor =
         cat(paste("WARNING: screen", normalize_name, "not found.\n"))
       }
     }
+  }
+  
+  # Normalizes all LFCs against per-screen non-essential median LFCs if specified
+  nonessential_ind <- (df$gene1 %in% nonessentials) & (df$gene2 %in% nonessentials)
+  if (sum(nonessential_ind) > 0 & nonessential_norm) {
+    for (screen in screens) {
+      for (col in screen[["replicates"]]) {
+        nonessential_vals <- as.numeric(unlist(df[nonessential_ind, col]))
+        nonessential_median <- stats::median(nonessential_vals, na.rm = TRUE)
+        df[,col] <- df[,col] - nonessential_median
+      }
+    }
+  } else {
+    cat(paste("Skipping LFC normalization to median per-screen non-essential gene LFC\n"))
   }
   
   # Removes flagged guides
