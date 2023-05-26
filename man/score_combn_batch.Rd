@@ -16,6 +16,7 @@ score_combn_batch(
   loess = TRUE,
   filter_genes = NULL,
   ignore_orientation = FALSE,
+  collapse_single_targeting = TRUE,
   fdr_method = "BY",
   fdr_threshold = 0.1,
   differential_threshold = 0.5,
@@ -53,6 +54,9 @@ Only works when test = "moderated-t" (default TRUE).}
 
 \item{ignore_orientation}{If TRUE, aggregates guides across both orientations, returning only
 one p-value and FDR column with orientation2 p-values set to NA (default FALSE).}
+
+\item{collapse_single_targeting}{If TRUE, takes the mean of single-targeting controls when
+there are multiple controls that match a given gene pair (default TRUE).}
 
 \item{fdr_method}{Type of FDR to compute. One of "BH", "BY" or "bonferroni" (default
 "BY")}
